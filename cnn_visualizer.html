@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星华大学：CNN 全连接透视引擎</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            background-color: #050814;
+            font-family: 'Noto Sans SC', sans-serif;
+            color: #e2e8f0;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 10% 50%, rgba(0, 240, 255, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 90% 50%, rgba(217, 70, 239, 0.05) 0%, transparent 40%);
+        }
+        .font-sci-fi { font-family: 'Orbitron', sans-serif; }
+        .glass-panel {
+            background: rgba(11, 15, 25, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.05);
+        }
+
+        /* 阶段高亮 (指示当前运行到哪一层) */
+        .stage-active {
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.15) !important;
+            border-color: rgba(0, 240, 255, 0.6) !important;
+        }
+
+        /* 网格基础 */
+        .grid-container {
+            display: grid; gap: 2px; padding: 4px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            border-radius: 6px; position: relative;
+        }
+        .cell {
+            width: 28px; height: 28px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: bold; border-radius: 3px;
+            transition: all 0.2s ease; font-family: 'Orbitron', sans-serif;
+            background-color: rgba(26, 31, 46, 0.8); color: rgba(255,255,255,0.3);
+        }
+        @media (min-width: 1024px) { .cell { width: 34px; height: 34px; font-size: 13px; } }
+
+        /* 输入层 & Padding */
+        .cell-pad { background-color: rgba(255,255,255,0.05); color: rgba(255,255,255,0.2); border: 1px dashed rgba(255,255,255,0.1); }
+        .receptive-field { background-color: rgba(0, 240, 255, 0.4) !important; box-shadow: inset 0 0 8px #00F0FF; color: #FFF; transform: scale(1.05); z-index: 10; }
+        
+        /* 滤波器 */
+        .filter-cell { background-color: rgba(255, 215, 0, 0.15); border: 1px solid rgba(255, 215, 0, 0.4); color: #FFD700; }
+        
+        /* Conv & ReLU 输出 (增加纯白字体和黑色阴影解决看不清的问题) */
+        .conv-cell { background-color: rgba(10, 15, 25, 0.8); border: 1px dashed rgba(0, 240, 255, 0.2); color: transparent; }
+        .conv-cell.calculated { border: 1px solid #00F0FF; color: #FFF; text-shadow: 0 1px 3px rgba(0,0,0,0.9); font-weight: 900;}
+        .conv-cell.negative { border-color: rgba(239, 68, 68, 0.5); }
+        .conv-cell.relu-activated { animation: reluFlash 0.5s ease; color: rgba(255,255,255,0.3) !important; background-color: rgba(0,0,0,0.8) !important; border-color: rgba(255,255,255,0.1) !important; text-shadow: none; font-weight: normal;}
+        
+        @keyframes reluFlash {
+            0% { background-color: #ef4444; color: #fff; transform: scale(1.1); }
+            100% { background-color: rgba(0,0,0,0.8); color: rgba(255,255,255,0.3); transform: scale(1); }
+        }
+
+        /* 感受野 (Pooling时) */
+        .pool-field { background-color: rgba(217, 70, 239, 0.4) !important; box-shadow: inset 0 0 8px #d946ef; color: #FFF; transform: scale(1.05); z-index: 10; }
+        
+        /* Pooling 输出 (增加纯白字体和黑色阴影解决看不清的问题) */
+        .pool-cell { background-color: rgba(10, 15, 25, 0.8); border: 1px dashed rgba(217, 70, 239, 0.2); color: transparent; }
+        .pool-cell.calculated { border: 1px solid #d946ef; color: #FFF; background-color: rgba(217, 70, 239, 0.15); box-shadow: 0 0 10px rgba(217, 70, 239, 0.3); transform: scale(1.05); text-shadow: 0 1px 3px rgba(0,0,0,0.9); font-weight: 900;}
+
+        /* 数学面板 */
+        .math-display {
+            font-family: monospace; background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(0, 240, 255, 0.3); border-radius: 6px;
+            padding: 10px; min-height: 60px; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px;
+        }
+        .math-term { padding: 2px 4px; border-radius: 4px; background: rgba(255, 255, 255, 0.05); font-size: 12px; }
+        .math-term.highlight { background: rgba(0, 240, 255, 0.3); border: 1px solid #00F0FF; color: #FFF; }
+
+        /* 控件样式 */
+        select, button { transition: all 0.2s; }
+        button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 0 15px rgba(0, 240, 255, 0.3); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+        .control-group { background: rgba(0,0,0,0.3); border: 1px solid rgba(0,240,255,0.15); padding: 8px 12px; border-radius: 8px; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4 md:p-6 pt-16 md:pt-6">
+
+    <!-- 返回主菜单 -->
+    <a href="index.html" class="fixed top-4 left-4 md:top-6 md:left-6 z-50 flex items-center gap-2 px-3 py-2 md:px-4 md:py-2 rounded border border-cyan-500/30 bg-black/60 backdrop-blur-md text-cyan-500/70 hover:text-cyan-300 hover:border-cyan-400 hover:shadow-[0_0_15px_rgba(0,240,255,0.4)] transition-all font-sci-fi text-xs md:text-sm text-decoration-none">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        <span class="hidden md:inline tracking-wider">MAIN TERMINAL</span>
+    </a>
+
+    <!-- 顶部标题 -->
+    <div class="text-center mb-6 mt-4 md:mt-0 w-full">
+        <h1 class="text-2xl md:text-4xl font-sci-fi font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-fuchsia-500 mb-1 drop-shadow-[0_0_8px_rgba(0,240,255,0.5)]">
+            CNN 深度前向传播引擎
+        </h1>
+        <p class="text-cyan-400/60 text-xs md:text-sm tracking-widest font-sci-fi">CONV2D → RELU → POOLING PIPELINE</p>
+    </div>
+
+    <!-- 主容器 -->
+    <div class="glass-panel rounded-2xl w-full max-w-7xl flex flex-col p-4 md:p-6">
+        
+        <!-- 全局超参数控制台 -->
+        <div class="flex flex-wrap gap-4 items-end justify-between mb-6 pb-6 border-b border-cyan-500/20">
+            <div class="flex flex-wrap gap-3">
+                <!-- 图像与卷积核 -->
+                <div class="control-group flex gap-4">
+                    <div class="flex flex-col">
+                        <label class="text-[9px] text-cyan-500/70 mb-1 font-sci-fi">INPUT (6x6)</label>
+                        <select id="sel-image" class="bg-black/50 border border-cyan-500/30 text-cyan-300 text-xs p-1.5 rounded outline-none">
+                            <option value="cross">十字标识</option>
+                            <option value="square">矩形方块</option>
+                            <option value="noise">混沌噪点</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-[9px] text-cyan-500/70 mb-1 font-sci-fi">KERNEL (3x3)</label>
+                        <select id="sel-filter" class="bg-black/50 border border-cyan-500/30 text-cyan-300 text-xs p-1.5 rounded outline-none">
+                            <option value="edge">边缘检测</option>
+                            <option value="sharpen">锐化提取</option>
+                            <option value="blur">模糊平滑</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 卷积超参数 -->
+                <div class="control-group flex gap-4">
+                    <div class="flex flex-col">
+                        <label class="text-[9px] text-yellow-500/70 mb-1 font-sci-fi">PADDING</label>
+                        <select id="sel-pad" class="bg-black/50 border border-yellow-500/30 text-yellow-400 text-xs p-1.5 rounded outline-none">
+                            <option value="0">0 (Valid)</option>
+                            <option value="1" selected>1 (Same)</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-[9px] text-yellow-500/70 mb-1 font-sci-fi">STRIDE</label>
+                        <select id="sel-stride" class="bg-black/50 border border-yellow-500/30 text-yellow-400 text-xs p-1.5 rounded outline-none">
+                            <option value="1" selected>1 (细粒度)</option>
+                            <option value="2">2 (降维跳跃)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 激活与池化 -->
+                <div class="control-group flex gap-4">
+                    <div class="flex flex-col">
+                        <label class="text-[9px] text-emerald-500/70 mb-1 font-sci-fi">ACTIVATION</label>
+                        <select id="sel-act" class="bg-black/50 border border-emerald-500/30 text-emerald-400 text-xs p-1.5 rounded outline-none">
+                            <option value="relu">ReLU (滤除负值)</option>
+                            <option value="none">None (线性)</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-[9px] text-fuchsia-500/70 mb-1 font-sci-fi">POOLING (2x2)</label>
+                        <select id="sel-pool" class="bg-black/50 border border-fuchsia-500/30 text-fuchsia-400 text-xs p-1.5 rounded outline-none">
+                            <option value="max">Max (提取最强)</option>
+                            <option value="avg">Average (平滑降维)</option>
+                            <option value="none">None</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 执行控制 -->
+            <div class="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
+                <button id="btn-auto" class="flex-1 md:flex-none px-6 py-2 rounded border border-cyan-400 text-cyan-400 font-sci-fi font-bold bg-cyan-900/30">
+                    AUTO RUN
+                </button>
+                <button id="btn-step" class="flex-1 md:flex-none px-6 py-2 rounded border border-yellow-500/70 text-yellow-400 font-sci-fi font-bold bg-yellow-900/20">
+                    STEP
+                </button>
+            </div>
+        </div>
+
+        <!-- 神经网络流水线可视化 -->
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
+            
+            <!-- LAYER 1: 填充后的输入层 -->
+            <div id="stage-input" class="flex flex-col items-center p-3 rounded-xl border border-transparent transition-all">
+                <h3 class="font-sci-fi text-cyan-300 mb-1 font-bold text-sm">L0: INPUT (PADDED)</h3>
+                <p class="text-[10px] text-gray-500 mb-2">尺寸: <span id="lbl-input-size">8x8</span></p>
+                <div id="grid-input" class="grid-container"></div>
+            </div>
+
+            <!-- LAYER 2: 卷积核与运算 -->
+            <div id="stage-conv" class="flex flex-col items-center justify-start p-3 rounded-xl border border-transparent transition-all bg-black/20">
+                <h3 class="font-sci-fi text-yellow-400 mb-1 font-bold text-sm">L1: CONV2D FILTER</h3>
+                <p class="text-[10px] text-gray-500 mb-4 text-center">提取局部特征 (点积运算)</p>
+                
+                <div id="grid-filter" class="grid-container mb-4" style="grid-template-columns: repeat(3, 1fr);"></div>
+                
+                <div class="w-full text-center">
+                    <div class="text-[9px] text-cyan-500/50 mb-1 font-sci-fi">TENSOR MATH LOG</div>
+                    <div id="math-display" class="math-display text-xs text-gray-300">WAITING...</div>
+                </div>
+            </div>
+
+            <!-- LAYER 3: 卷积输出与激活 -->
+            <div id="stage-act" class="flex flex-col items-center p-3 rounded-xl border border-transparent transition-all">
+                <h3 class="font-sci-fi text-emerald-400 mb-1 font-bold text-sm">L2: FEATURE MAP & ACT</h3>
+                <p class="text-[10px] text-gray-500 mb-2">尺寸: <span id="lbl-conv-size">6x6</span> | 状态: <span id="lbl-act-status" class="text-yellow-500">CONV</span></p>
+                <div id="grid-conv" class="grid-container"></div>
+            </div>
+
+            <!-- LAYER 4: 池化层 -->
+            <div id="stage-pool" class="flex flex-col items-center p-3 rounded-xl border border-transparent transition-all">
+                <h3 class="font-sci-fi text-fuchsia-400 mb-1 font-bold text-sm">L3: POOLING</h3>
+                <p class="text-[10px] text-gray-500 mb-2">尺寸: <span id="lbl-pool-size">3x3</span></p>
+                <div id="grid-pool" class="grid-container"></div>
+                
+                <!-- 结束提示 -->
+                <div id="finish-msg" class="mt-4 text-center hidden">
+                    <span class="px-3 py-1 bg-fuchsia-900/40 border border-fuchsia-500 rounded text-fuchsia-300 text-xs font-sci-fi animate-pulse">
+                        PIPELINE COMPLETE
+                    </span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // --- 核心数据预设 ---
+        const rawInputSize = 6;
+        const filterSize = 3;
+        const poolSize = 2; // 2x2 pooling, stride 2
+
+        const imgData = {
+            cross: [
+                [0,0,1,1,0,0], [0,0,1,1,0,0], [1,1,1,1,1,1], [1,1,1,1,1,1], [0,0,1,1,0,0], [0,0,1,1,0,0]
+            ],
+            square: [
+                [0,0,0,0,0,0], [0,1,1,1,1,0], [0,1,0,0,1,0], [0,1,0,0,1,0], [0,1,1,1,1,0], [0,0,0,0,0,0]
+            ],
+            noise: []
+        };
+        const fltData = {
+            edge: [[-1,-1,-1], [-1,8,-1], [-1,-1,-1]],
+            sharpen: [[0,-1,0], [-1,5,-1], [0,-1,0]],
+            blur: [[1,1,1], [1,1,1], [1,1,1]]
+        };
+
+        // --- 运行状态 ---
+        let params = { pad: 1, stride: 1, act: 'relu', pool: 'max' };
+        let dims = { pIn: 8, conv: 6, pOut: 3 };
+        
+        let state = {
+            phase: 'init', // init, conv, relu, pool, done
+            scanR: 0, scanC: 0,
+            isAuto: false, interval: null
+        };
+
+        // 矩阵存储
+        let matrix = { pIn: [], flt: [], conv: [], pool: [] };
+
+        // DOM 引用
+        const ui = {
+            gIn: document.getElementById('grid-input'), gFlt: document.getElementById('grid-filter'),
+            gConv: document.getElementById('grid-conv'), gPool: document.getElementById('grid-pool'),
+            math: document.getElementById('math-display'),
+            lblIn: document.getElementById('lbl-input-size'), lblConv: document.getElementById('lbl-conv-size'),
+            lblPool: document.getElementById('lbl-pool-size'), lblAct: document.getElementById('lbl-act-status'),
+            btnStep: document.getElementById('btn-step'), btnAuto: document.getElementById('btn-auto'),
+            msgFin: document.getElementById('finish-msg')
+        };
+
+        // --- 初始化系统 ---
+        function initSystem() {
+            stopAuto();
+            state = { phase: 'conv', scanR: 0, scanC: 0, isAuto: false, interval: null };
+            
+            // 获取参数
+            params.pad = parseInt(document.getElementById('sel-pad').value);
+            params.stride = parseInt(document.getElementById('sel-stride').value);
+            params.act = document.getElementById('sel-act').value;
+            params.pool = document.getElementById('sel-pool').value;
+            
+            const selImg = document.getElementById('sel-image').value;
+            if(selImg === 'noise') imgData.noise = Array(6).fill().map(() => Array(6).fill().map(() => Math.random()>0.5?1:0));
+            
+            matrix.flt = fltData[document.getElementById('sel-filter').value];
+
+            // 计算维度
+            dims.pIn = rawInputSize + 2 * params.pad;
+            dims.conv = Math.floor((dims.pIn - filterSize) / params.stride) + 1;
+            dims.pOut = params.pool !== 'none' ? Math.floor(dims.conv / 2) : 0;
+
+            // 构建 Padded Input
+            matrix.pIn = Array(dims.pIn).fill().map(() => Array(dims.pIn).fill(0));
+            for(let r=0; r<rawInputSize; r++){
+                for(let c=0; c<rawInputSize; c++){
+                    matrix.pIn[r+params.pad][c+params.pad] = imgData[selImg][r][c];
+                }
+            }
+
+            // 初始化输出矩阵
+            matrix.conv = Array(dims.conv).fill().map(() => Array(dims.conv).fill(0));
+            matrix.pool = Array(dims.pOut).fill().map(() => Array(dims.pOut).fill(0));
+
+            updateUI();
+        }
+
+        // 核心修改：控制背景最大透明度上限 (0.75)，防止完全掩盖白色字体
+        function getPixColor(val, type) {
+            if(val === 0 || val === '?') return 'transparent';
+            
+            // 计算透明度，设置上限 0.75 以确保白色字体对比度清晰可见
+            let op = Math.min(Math.abs(val)/8, 0.75); 
+            
+            if(type === 'in') return `rgba(0, 240, 255, ${0.1 + op})`;
+            if(type === 'conv') {
+                if(val < 0) return `rgba(239, 68, 68, ${op})`; // 负数变红
+                return `rgba(16, 185, 129, ${op})`; // 正数变绿
+            }
+            if(type === 'pool') return `rgba(217, 70, 239, ${op})`; // Pool结果变紫
+            return 'transparent';
+        }
+
+        function updateUI() {
+            ui.lblIn.innerText = `${dims.pIn}x${dims.pIn}`;
+            ui.lblConv.innerText = `${dims.conv}x${dims.conv}`;
+            ui.lblPool.innerText = params.pool !== 'none' ? `${dims.pOut}x${dims.pOut}` : 'DISABLED';
+            ui.lblAct.innerText = 'WAITING'; ui.lblAct.className = 'text-gray-500';
+            ui.math.innerHTML = 'READY FOR CONVOLUTION';
+            ui.msgFin.classList.add('hidden');
+            ui.btnStep.innerText = 'STEP';
+
+            // Render Input
+            ui.gIn.style.gridTemplateColumns = `repeat(${dims.pIn}, 1fr)`;
+            ui.gIn.innerHTML = '';
+            for(let r=0; r<dims.pIn; r++){
+                for(let c=0; c<dims.pIn; c++){
+                    const isPad = params.pad > 0 && (r<params.pad || r>=dims.pIn-params.pad || c<params.pad || c>=dims.pIn-params.pad);
+                    const cell = document.createElement('div');
+                    cell.className = `cell in-${r}-${c} ${isPad ? 'cell-pad' : ''}`;
+                    cell.innerText = matrix.pIn[r][c];
+                    if(!isPad) cell.style.backgroundColor = getPixColor(matrix.pIn[r][c], 'in');
+                    ui.gIn.appendChild(cell);
+                }
+            }
+
+            // Render Filter
+            ui.gFlt.innerHTML = '';
+            for(let r=0; r<filterSize; r++){
+                for(let c=0; c<filterSize; c++){
+                    const cell = document.createElement('div');
+                    cell.className = `cell filter-cell`; cell.innerText = matrix.flt[r][c];
+                    ui.gFlt.appendChild(cell);
+                }
+            }
+
+            // Render Conv
+            ui.gConv.style.gridTemplateColumns = `repeat(${dims.conv}, 1fr)`;
+            ui.gConv.innerHTML = '';
+            for(let r=0; r<dims.conv; r++){
+                for(let c=0; c<dims.conv; c++){
+                    const cell = document.createElement('div');
+                    cell.className = `cell conv-cell cv-${r}-${c}`; cell.innerText = '?';
+                    ui.gConv.appendChild(cell);
+                }
+            }
+
+            // Render Pool
+            ui.gPool.style.gridTemplateColumns = `repeat(${dims.pOut || 1}, 1fr)`;
+            ui.gPool.innerHTML = '';
+            if(params.pool !== 'none') {
+                for(let r=0; r<dims.pOut; r++){
+                    for(let c=0; c<dims.pOut; c++){
+                        const cell = document.createElement('div');
+                        cell.className = `cell pool-cell pl-${r}-${c}`; cell.innerText = '?';
+                        ui.gPool.appendChild(cell);
+                    }
+                }
+            }
+            
+            highlightStage('conv');
+        }
+
+        function highlightStage(stage) {
+            ['input', 'conv', 'act', 'pool'].forEach(s => document.getElementById(`stage-${s}`).classList.remove('stage-active'));
+            if(stage === 'conv') { document.getElementById('stage-input').classList.add('stage-active'); document.getElementById('stage-conv').classList.add('stage-active'); }
+            if(stage === 'relu') document.getElementById('stage-act').classList.add('stage-active');
+            if(stage === 'pool') { document.getElementById('stage-act').classList.add('stage-active'); document.getElementById('stage-pool').classList.add('stage-active'); }
+        }
+
+        function clearHighlights() {
+            document.querySelectorAll('.receptive-field').forEach(el => el.classList.remove('receptive-field'));
+            document.querySelectorAll('.pool-field').forEach(el => el.classList.remove('pool-field'));
+        }
+
+        // --- 核心执行流 ---
+        function executeStep() {
+            clearHighlights();
+
+            if(state.phase === 'conv') {
+                highlightStage('conv');
+                ui.lblAct.innerText = 'CONV2D RUNNING'; ui.lblAct.className = 'text-yellow-400 animate-pulse';
+                
+                let sum = 0; let mHtml = '';
+                for(let fr=0; fr<filterSize; fr++) {
+                    for(let fc=0; fc<filterSize; fc++) {
+                        let ir = state.scanR * params.stride + fr;
+                        let ic = state.scanC * params.stride + fc;
+                        let vIn = matrix.pIn[ir][ic]; let vFlt = matrix.flt[fr][fc];
+                        sum += vIn * vFlt;
+                        
+                        document.querySelector(`.in-${ir}-${ic}`).classList.add('receptive-field');
+                        mHtml += `<span class="math-term ${vIn>0 && vFlt!==0 ? 'highlight':''}">${vIn}×<span class="text-yellow-400">${vFlt}</span></span>${fr==2&&fc==2?'':' + '}`;
+                    }
+                }
+                
+                matrix.conv[state.scanR][state.scanC] = sum;
+                let cCell = document.querySelector(`.cv-${state.scanR}-${state.scanC}`);
+                cCell.innerText = sum; cCell.classList.add('calculated');
+                if(sum < 0) cCell.classList.add('negative');
+                cCell.style.backgroundColor = getPixColor(sum, 'conv');
+                
+                ui.math.innerHTML = mHtml + `<br><span class="text-white mt-1 block">=> ${sum}</span>`;
+
+                state.scanC++;
+                if(state.scanC >= dims.conv) { state.scanC = 0; state.scanR++; }
+                if(state.scanR >= dims.conv) {
+                    state.phase = params.act === 'relu' ? 'relu' : (params.pool !== 'none' ? 'pool' : 'done');
+                    state.scanR = 0; state.scanC = 0;
+                }
+            } 
+            else if (state.phase === 'relu') {
+                highlightStage('relu');
+                ui.lblAct.innerText = 'ACTIVATING (ReLU)'; ui.lblAct.className = 'text-emerald-400 animate-pulse';
+                ui.math.innerHTML = `<span class="text-emerald-400">ReLU(x) = max(0, x)</span><br><span class="text-xs text-gray-400">滤除所有负值特征，引入非线性</span>`;
+                
+                // 一次性执行 ReLU 动画
+                for(let r=0; r<dims.conv; r++){
+                    for(let c=0; c<dims.conv; c++){
+                        if(matrix.conv[r][c] < 0) {
+                            matrix.conv[r][c] = 0;
+                            let cCell = document.querySelector(`.cv-${r}-${c}`);
+                            cCell.innerText = '0';
+                            cCell.classList.remove('negative');
+                            cCell.classList.add('relu-activated');
+                            cCell.style.backgroundColor = getPixColor(0, 'conv');
+                        }
+                    }
+                }
+                state.phase = params.pool !== 'none' ? 'pool' : 'done';
+            }
+            else if (state.phase === 'pool') {
+                highlightStage('pool');
+                ui.lblAct.innerText = 'POOLING (2x2)'; ui.lblAct.className = 'text-fuchsia-400 animate-pulse';
+                
+                let pVals = []; let mHtml = '';
+                for(let pr=0; pr<2; pr++){
+                    for(let pc=0; pc<2; pc++){
+                        let cr = state.scanR * 2 + pr;
+                        let cc = state.scanC * 2 + pc;
+                        if(cr < dims.conv && cc < dims.conv) {
+                            pVals.push(matrix.conv[cr][cc]);
+                            document.querySelector(`.cv-${cr}-${cc}`).classList.add('pool-field');
+                        }
+                    }
+                }
+                
+                let res = params.pool === 'max' ? Math.max(...pVals) : Math.round(pVals.reduce((a,b)=>a+b,0)/pVals.length*10)/10;
+                matrix.pool[state.scanR][state.scanC] = res;
+                
+                let pCell = document.querySelector(`.pl-${state.scanR}-${state.scanC}`);
+                pCell.innerText = res; pCell.classList.add('calculated');
+                pCell.style.backgroundColor = getPixColor(res, 'pool');
+
+                ui.math.innerHTML = `<span class="text-fuchsia-400">${params.pool.toUpperCase()} POOLING</span><br>[${pVals.join(', ')}] => <span class="text-white font-bold">${res}</span>`;
+
+                state.scanC++;
+                if(state.scanC >= dims.pOut) { state.scanC = 0; state.scanR++; }
+                if(state.scanR >= dims.pOut) { state.phase = 'done'; }
+            }
+            
+            if(state.phase === 'done') {
+                stopAuto();
+                clearHighlights();
+                ui.btnStep.innerText = 'RESTART';
+                ui.lblAct.innerText = 'COMPLETED'; ui.lblAct.className = 'text-cyan-400 font-bold';
+                ui.math.innerHTML = `<span class="text-cyan-400 font-bold text-lg">FORWARD PASS COMPLETE</span>`;
+                ui.msgFin.classList.remove('hidden');
+                ['input', 'conv', 'act', 'pool'].forEach(s => document.getElementById(`stage-${s}`).classList.remove('stage-active'));
+            }
+        }
+
+        function stopAuto() {
+            state.isAuto = false; clearInterval(state.interval);
+            ui.btnAuto.innerText = 'AUTO RUN'; ui.btnAuto.classList.replace('bg-red-900/40', 'bg-cyan-900/30'); ui.btnAuto.classList.replace('border-red-500', 'border-cyan-400'); ui.btnAuto.classList.replace('text-red-400', 'text-cyan-400');
+            ui.btnStep.disabled = false;
+        }
+
+        function toggleAuto() {
+            if(state.phase === 'done') initSystem();
+            if(state.isAuto) stopAuto();
+            else {
+                state.isAuto = true; ui.btnStep.disabled = true;
+                ui.btnAuto.innerText = 'STOP'; ui.btnAuto.classList.replace('bg-cyan-900/30', 'bg-red-900/40'); ui.btnAuto.classList.replace('border-cyan-400', 'border-red-500'); ui.btnAuto.classList.replace('text-cyan-400', 'text-red-400');
+                state.interval = setInterval(() => {
+                    executeStep();
+                    if(state.phase === 'done') stopAuto();
+                }, 600);
+            }
+        }
+
+        // 监听
+        ui.btnStep.addEventListener('click', () => { if(state.phase === 'done') initSystem(); else executeStep(); });
+        ui.btnAuto.addEventListener('click', toggleAuto);
+        document.querySelectorAll('select').forEach(el => el.addEventListener('change', initSystem));
+
+        window.onload = initSystem;
+    </script>
+</body>
+</html>

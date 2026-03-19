@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星华大学：数组与内存映射</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Noto+Sans+SC:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            background-color: #03050a;
+            font-family: 'Noto Sans SC', sans-serif;
+            color: #e2e8f0;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 15% 20%, rgba(0, 240, 255, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 85% 80%, rgba(217, 70, 239, 0.05) 0%, transparent 40%),
+                linear-gradient(to bottom, transparent, rgba(0,0,0,0.8));
+        }
+
+        .font-sci-fi { font-family: 'Orbitron', sans-serif; }
+
+        .glass-panel {
+            background: rgba(11, 15, 25, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.05);
+        }
+
+        /* 内存条与插槽样式 */
+        .memory-strip {
+            display: flex;
+            gap: 4px;
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid rgba(100, 116, 139, 0.3);
+            border-radius: 8px;
+            overflow-x: auto;
+            position: relative;
+            /* 隐藏火狐浏览器的默认滚动条（可选） */
+            scrollbar-width: thin;
+            scrollbar-color: rgba(0, 240, 255, 0.5) rgba(0, 0, 0, 0.5);
+        }
+
+        /* 🚀 定制科幻风水平滚动条 🚀 */
+        .memory-strip::-webkit-scrollbar {
+            height: 8px; /* 滚动条的高度 */
+        }
+        .memory-strip::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.8); /* 轨道背景色 */
+            border-radius: 4px;
+            border: 1px solid rgba(0, 240, 255, 0.1);
+        }
+        .memory-strip::-webkit-scrollbar-thumb {
+            background: rgba(0, 240, 255, 0.4); /* 滑块颜色 */
+            border-radius: 4px;
+            box-shadow: inset 0 0 5px rgba(0, 240, 255, 0.8);
+        }
+        .memory-strip::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 240, 255, 0.8); /* 悬停时提亮 */
+        }
+
+        /* 底部金手指装饰 */
+        .memory-strip::after {
+            content: '';
+            position: absolute;
+            bottom: -6px; left: 10%; width: 80%; height: 6px;
+            background: repeating-linear-gradient(90deg, #FFD700 0, #FFD700 8px, transparent 8px, transparent 12px);
+            border-radius: 2px;
+            opacity: 0.7;
+        }
+
+        .mem-slot {
+            display: flex; flex-direction: column; align-items: center; gap: 8px;
+            min-width: 60px;
+        }
+
+        .mem-address {
+            font-family: 'Orbitron', monospace;
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.4);
+            letter-spacing: 1px;
+        }
+
+        .mem-block {
+            width: 100%; height: 60px;
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-family: 'Orbitron', monospace; font-size: 20px; font-weight: bold; color: transparent;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        /* 数组元素的专属样式 */
+        .mem-block.array-element {
+            background: rgba(0, 240, 255, 0.15);
+            border: 1px solid #00F0FF;
+            color: #00F0FF;
+            box-shadow: inset 0 0 15px rgba(0, 240, 255, 0.1);
+        }
+
+        .mem-block.base-address {
+            border: 2px solid #FFD700 !important;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.4), inset 0 0 10px rgba(255, 215, 0, 0.2) !important;
+        }
+        .mem-block.base-address::before {
+            content: 'BASE'; position: absolute; top: -10px; font-size: 8px; color: #FFD700; background: #000; padding: 0 4px; border: 1px solid #FFD700; border-radius: 2px;
+        }
+
+        /* 动画交互特效 */
+        .mem-block.target-read {
+            animation: pulse-read 0.5s ease-out;
+            background: rgba(16, 185, 129, 0.4) !important;
+            border-color: #10b981 !important; color: #FFF !important;
+            box-shadow: 0 0 20px #10b981 !important; transform: scale(1.1); z-index: 10;
+        }
+
+        .mem-block.target-move {
+            background: rgba(217, 70, 239, 0.4) !important;
+            border-color: #d946ef !important; color: #FFF !important;
+            box-shadow: 0 0 20px #d946ef !important; transform: translateY(-5px); z-index: 10;
+        }
+
+        @keyframes pulse-read {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            50% { transform: scale(1.2); box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); }
+            100% { transform: scale(1.1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        /* 数学寻址面板 */
+        .math-board {
+            background: rgba(0, 0, 0, 0.5); border: 1px dashed rgba(0, 240, 255, 0.3);
+            border-radius: 8px; padding: 16px; font-family: 'Orbitron', monospace;
+            display: flex; flex-direction: column; align-items: center;
+        }
+
+        button { transition: all 0.2s; }
+        button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 0 15px rgba(0, 240, 255, 0.4); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+        
+        .control-input { background: rgba(0,0,0,0.6); border: 1px solid rgba(0,240,255,0.3); color: #00F0FF; text-align: center; border-radius: 4px; padding: 4px; width: 60px; outline: none; font-family: 'Orbitron'; }
+        .control-input:focus { border-color: #00F0FF; box-shadow: 0 0 8px rgba(0,240,255,0.5); }
+
+        /* 🚀 隐藏数字输入框默认的丑陋上下箭头 🚀 */
+        /* Chrome, Safari, Edge, Opera */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        /* Firefox */
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4 md:p-6 pt-16 md:pt-6">
+
+    <!-- 🚀 返回主菜单按钮 -->
+    <a href="index.html" class="fixed top-4 left-4 md:top-6 md:left-6 z-50 flex items-center gap-2 px-3 py-2 md:px-4 md:py-2 rounded border border-cyan-500/30 bg-black/60 backdrop-blur-md text-cyan-500/70 hover:text-cyan-300 hover:border-cyan-400 hover:shadow-[0_0_15px_rgba(0,240,255,0.4)] transition-all font-sci-fi text-xs md:text-sm group text-decoration-none">
+        <svg class="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        <span class="hidden md:inline tracking-wider">MAIN TERMINAL</span>
+    </a>
+
+    <!-- 顶部标题 -->
+    <div class="text-center mb-8 mt-4 md:mt-0 w-full">
+        <h1 class="text-3xl md:text-4xl font-sci-fi font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 mb-2 drop-shadow-[0_0_8px_rgba(0,240,255,0.5)]">
+            星际数据收容单元：数组 (ARRAY)
+        </h1>
+        <p class="text-cyan-400/60 text-sm tracking-widest font-sci-fi">CONTIGUOUS MEMORY ALLOCATION & O(1) ACCESS</p>
+    </div>
+
+    <!-- 理论铺垫区 -->
+    <div class="w-full max-w-6xl glass-panel rounded-2xl p-6 md:p-8 mb-8 flex flex-col md:flex-row gap-8 items-center border-l-4 border-l-cyan-400">
+        <div class="flex-1">
+            <h2 class="text-xl font-bold text-white mb-3">计算机科学中最伟大的发明：<span class="text-cyan-400">连续内存</span>。</h2>
+            <p class="text-gray-400 text-sm leading-relaxed mb-4">
+                数组（Array）之所以是所有编程语言的基石，是因为它完美契合了物理内存的硬件特性：<strong class="text-white">连续分配</strong>。<br>
+                这就好比你在太空港包下了一整排连在一起的飞船停机位。只要知道第一个机位的编号（基地址 <span class="text-yellow-400 font-sci-fi font-bold">Base Address</span>），再知道每个机位的宽度（元素大小 <span class="text-fuchsia-400 font-sci-fi font-bold">Element Size</span>），AI 就能通过<span class="text-emerald-400 font-bold">一行数学公式</span>，在 0.00001 毫秒内瞬间锁定第 1000 个机位的确切位置。这就是恐怖的 <strong class="text-cyan-300">O(1) 随机访问</strong>。
+            </p>
+        </div>
+    </div>
+
+    <!-- 交互式教具主区 -->
+    <div class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- 左侧/上方：内存条可视化 (占 8 列) -->
+        <div class="lg:col-span-8 glass-panel rounded-2xl p-6 flex flex-col">
+            <h2 class="text-lg font-bold text-cyan-300 font-sci-fi mb-2 flex justify-between items-center border-b border-cyan-500/30 pb-2">
+                <span>QUANTUM RAM (物理内存条)</span>
+                <span class="text-xs text-gray-500">模拟一段连续的内存地址空间</span>
+            </h2>
+
+            <!-- 内存条视图 -->
+            <div class="memory-strip mt-4" id="ram-strip">
+                <!-- 由 JS 动态渲染 14 个内存槽位 -->
+            </div>
+
+            <!-- 寻址公式黑板 -->
+            <div class="math-board mt-6 relative overflow-hidden">
+                <div class="absolute top-2 left-2 text-[9px] text-cyan-500/50">ADDRESS DECODER (寻址解码器)</div>
+                <div class="text-gray-400 text-xs mb-2 mt-4">数组读取公式的底层逻辑：</div>
+                
+                <div class="text-xl md:text-2xl font-bold text-white tracking-widest flex flex-wrap justify-center gap-2 items-center">
+                    <span>Addr[</span><span class="text-cyan-400" id="math-i">i</span><span>]</span>
+                    <span class="text-gray-500 mx-2">=</span>
+                    <span class="text-yellow-400">Base</span>
+                    <span class="text-gray-500 mx-1">+</span>
+                    <span>(</span>
+                    <span class="text-cyan-400" id="math-i2">i</span>
+                    <span class="text-gray-500 mx-1">×</span>
+                    <span class="text-fuchsia-400">Size</span>
+                    <span>)</span>
+                </div>
+                
+                <div class="w-3/4 h-px bg-cyan-900/50 my-3"></div>
+                
+                <!-- 实时演算展示 -->
+                <div class="text-sm md:text-base text-cyan-200" id="math-calc">
+                    等待操作指令...
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧/下方：操作控制台 (占 4 列) -->
+        <div class="lg:col-span-4 glass-panel rounded-2xl p-6 flex flex-col">
+            <h2 class="text-lg font-bold text-cyan-300 font-sci-fi mb-4 border-b border-cyan-500/30 pb-2">
+                CONSOLE (数组操作台)
+            </h2>
+
+            <!-- 状态信息 -->
+            <div class="bg-black/40 border border-gray-800 rounded p-3 mb-6 text-xs font-sci-fi space-y-2">
+                <div class="flex justify-between text-gray-400"><span>BASE ADDRESS:</span> <span class="text-yellow-400">0x1000</span></div>
+                <div class="flex justify-between text-gray-400"><span>ELEMENT SIZE:</span> <span class="text-fuchsia-400">4 Bytes</span></div>
+                <div class="flex justify-between text-gray-400"><span>ARRAY CAPACITY:</span> <span class="text-white">8 Elements</span></div>
+                <div class="flex justify-between text-cyan-400 font-bold border-t border-gray-800 pt-2"><span>CURRENT LENGTH:</span> <span id="stat-len">5</span></div>
+            </div>
+
+            <!-- 操作 1: 随机访问 O(1) -->
+            <div class="mb-6 border-l-2 border-emerald-500 pl-3">
+                <label class="text-xs text-emerald-400 font-sci-fi block mb-2">1. 瞬间跃迁读取 / O(1)</label>
+                <div class="flex gap-2 items-center">
+                    <span class="text-gray-400 font-sci-fi text-sm">array[</span>
+                    <input type="number" id="input-read" class="control-input" value="2" min="0" max="7">
+                    <span class="text-gray-400 font-sci-fi text-sm">]</span>
+                    <button id="btn-read" class="ml-auto px-4 py-1.5 rounded border border-emerald-500/50 bg-emerald-900/30 text-emerald-400 text-xs font-bold font-sci-fi">READ</button>
+                </div>
+            </div>
+
+            <!-- 操作 2: 中间插入 O(N) -->
+            <div class="mb-6 border-l-2 border-yellow-500 pl-3">
+                <label class="text-xs text-yellow-400 font-sci-fi block mb-2">2. 空间排挤插入 / O(N)</label>
+                <div class="flex gap-2 items-center mb-2">
+                    <span class="text-gray-400 font-sci-fi text-xs w-12">Index:</span>
+                    <input type="number" id="input-ins-idx" class="control-input h-7" value="1" min="0" max="7">
+                </div>
+                <div class="flex gap-2 items-center">
+                    <span class="text-gray-400 font-sci-fi text-xs w-12">Value:</span>
+                    <input type="number" id="input-ins-val" class="control-input h-7" value="99" min="0" max="999">
+                    <button id="btn-insert" class="ml-auto px-4 py-1.5 rounded border border-yellow-500/50 bg-yellow-900/30 text-yellow-400 text-xs font-bold font-sci-fi">INSERT</button>
+                </div>
+            </div>
+
+            <!-- 操作 3: 元素删除 O(N) -->
+            <div class="mb-6 border-l-2 border-red-500 pl-3">
+                <label class="text-xs text-red-400 font-sci-fi block mb-2">3. 空间坍缩删除 / O(N)</label>
+                <div class="flex gap-2 items-center">
+                    <span class="text-gray-400 font-sci-fi text-sm">delete[</span>
+                    <input type="number" id="input-del" class="control-input" value="0" min="0" max="7">
+                    <span class="text-gray-400 font-sci-fi text-sm">]</span>
+                    <button id="btn-delete" class="ml-auto px-4 py-1.5 rounded border border-red-500/50 bg-red-900/30 text-red-400 text-xs font-bold font-sci-fi">DELETE</button>
+                </div>
+            </div>
+            
+            <!-- 重置按钮 -->
+            <button id="btn-reset" class="mt-auto w-full py-2 rounded border border-gray-600 bg-black/40 text-gray-400 text-xs font-sci-fi hover:text-white">RESET SYSTEM</button>
+
+        </div>
+    </div>
+
+    <!-- 弹窗通知 -->
+    <div id="toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg border bg-black/80 backdrop-blur-md font-sci-fi text-sm font-bold z-50 transition-all duration-300 opacity-0 pointer-events-none">
+        <!-- 动态消息 -->
+    </div>
+
+    <script>
+        // --- 系统配置与状态 ---
+        const MEM_START_ADDR = 0x1000;
+        const ELEM_SIZE = 4; // 每个元素占 4 字节
+        const TOTAL_SLOTS = 12; // 内存条上总共画 12 个槽位
+        const ARR_CAPACITY = 8; // 数组只向系统申请了 8 个位置
+        const ARR_START_OFFSET = 2; // 数组从内存条的第 2 个槽位开始分配，为了视觉留白
+
+        // 内部状态
+        let arrayData = [15, 42, 8, 91, 33]; // 当前长度 5
+        let isAnimating = false;
+
+        // DOM 引用
+        const ramStrip = document.getElementById('ram-strip');
+        const statLen = document.getElementById('stat-len');
+        const mathI = document.getElementById('math-i');
+        const mathI2 = document.getElementById('math-i2');
+        const mathCalc = document.getElementById('math-calc');
+        const toastEl = document.getElementById('toast');
+
+        // --- 核心渲染逻辑 ---
+        function formatHex(num) {
+            return '0x' + num.toString(16).toUpperCase();
+        }
+
+        function initMemory() {
+            ramStrip.innerHTML = '';
+            for (let i = 0; i < TOTAL_SLOTS; i++) {
+                const currentAddr = MEM_START_ADDR + (i * ELEM_SIZE);
+                
+                // 判断当前物理槽位是不是属于分配给数组的 Capacity 空间
+                const isArrayAllocated = (i >= ARR_START_OFFSET) && (i < ARR_START_OFFSET + ARR_CAPACITY);
+                // 判断当前物理槽位有没有被数组实际存入有效数据 (Length)
+                const arrayIndex = i - ARR_START_OFFSET;
+                const hasValidData = isArrayAllocated && (arrayIndex < arrayData.length);
+                const isBase = (i === ARR_START_OFFSET);
+
+                const slot = document.createElement('div');
+                slot.className = 'mem-slot';
+
+                // 地址标签
+                const addrLabel = document.createElement('div');
+                addrLabel.className = 'mem-address';
+                addrLabel.innerText = formatHex(currentAddr);
+                if (isArrayAllocated) addrLabel.style.color = '#00F0FF';
+
+                // 物理内存块
+                const block = document.createElement('div');
+                block.className = `mem-block ${isBase ? 'base-address' : ''} ${hasValidData ? 'array-element' : ''}`;
+                block.id = `mem-block-${i}`;
+                
+                // 内部显示文字
+                if (hasValidData) {
+                    block.innerText = arrayData[arrayIndex];
+                    // 悬浮显示索引
+                    const idxTag = document.createElement('div');
+                    idxTag.className = 'absolute -bottom-5 text-[10px] text-cyan-500/50 font-mono';
+                    idxTag.innerText = `[${arrayIndex}]`;
+                    block.appendChild(idxTag);
+                }
+
+                // 边框标识数组分配的容量边界 (Capacity)
+                if (isArrayAllocated && !hasValidData) {
+                    block.style.borderColor = 'rgba(0, 240, 255, 0.2)';
+                    block.style.background = 'rgba(0, 240, 255, 0.05)';
+                }
+
+                slot.appendChild(addrLabel);
+                slot.appendChild(block);
+                ramStrip.appendChild(slot);
+            }
+            
+            statLen.innerText = arrayData.length;
+            if(arrayData.length >= ARR_CAPACITY) statLen.className = "text-red-400 font-bold";
+            else statLen.className = "text-cyan-400 font-bold";
+        }
+
+        const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+        function showToast(msg, type='error') {
+            toastEl.innerHTML = msg;
+            toastEl.className = `fixed bottom-10 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg border font-sci-fi text-sm font-bold z-50 transition-all duration-300 pointer-events-none ${
+                type === 'error' ? 'bg-red-900/80 border-red-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.5)]' : 'bg-emerald-900/80 border-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.5)]'
+            }`;
+            toastEl.style.opacity = '1';
+            toastEl.style.transform = 'translate(-50%, -10px)';
+            setTimeout(() => {
+                toastEl.style.opacity = '0';
+                toastEl.style.transform = 'translate(-50%, 0)';
+            }, 2500);
+        }
+
+        function updateMathBoard(index, operation="READ") {
+            mathI.innerText = index;
+            mathI2.innerText = index;
+            const targetAddr = MEM_START_ADDR + (ARR_START_OFFSET * ELEM_SIZE) + (index * ELEM_SIZE);
+            const baseStr = formatHex(MEM_START_ADDR + (ARR_START_OFFSET * ELEM_SIZE));
+            
+            mathCalc.innerHTML = `
+                <div class="animate-pulse flex items-center justify-center gap-2">
+                    <span class="text-gray-400">${operation} Target:</span> 
+                    <span class="text-yellow-400">${baseStr}</span> + (${index} × 4) = 
+                    <strong class="text-emerald-400 text-xl shadow-emerald-500 drop-shadow-md bg-emerald-900/30 px-2 py-1 rounded border border-emerald-500/50">${formatHex(targetAddr)}</strong>
+                </div>
+            `;
+        }
+
+        // --- 操作逻辑 1: O(1) 瞬间读取 ---
+        async function handleRead() {
+            if(isAnimating) return;
+            const idx = parseInt(document.getElementById('input-read').value);
+            
+            if (idx < 0 || idx >= arrayData.length) {
+                showToast(`OUT OF BOUNDS: Array length is ${arrayData.length}, requested index ${idx}.`);
+                return;
+            }
+
+            isAnimating = true;
+            updateMathBoard(idx, "READ");
+            
+            // 找出对应的 DOM 物理块
+            const physIndex = ARR_START_OFFSET + idx;
+            const block = document.getElementById(`mem-block-${physIndex}`);
+            
+            // 触发高亮特效
+            block.classList.add('target-read');
+            await sleep(600);
+            block.classList.remove('target-read');
+            
+            isAnimating = false;
+        }
+
+        // --- 操作逻辑 2: O(N) 插入 ---
+        async function handleInsert() {
+            if(isAnimating) return;
+            
+            if(arrayData.length >= ARR_CAPACITY) {
+                showToast(`SYSTEM OVERFLOW: Array capacity (${ARR_CAPACITY}) reached. Need to allocate new memory.`, 'error');
+                return;
+            }
+
+            const idx = parseInt(document.getElementById('input-ins-idx').value);
+            const val = parseInt(document.getElementById('input-ins-val').value);
+
+            if (idx < 0 || idx > arrayData.length) {
+                showToast(`INVALID INSERTION INDEX. Valid range: 0 to ${arrayData.length}`);
+                return;
+            }
+
+            isAnimating = true;
+            mathCalc.innerHTML = `<span class="text-yellow-400 animate-pulse">INITIATING O(N) SHIFT SEQUENCE...</span>`;
+
+            // 如果不是插在末尾，需要全体向右挪动 (视觉动画)
+            if (idx < arrayData.length) {
+                for (let i = arrayData.length - 1; i >= idx; i--) {
+                    const fromPhys = ARR_START_OFFSET + i;
+                    const toPhys = ARR_START_OFFSET + i + 1;
+                    
+                    const fromBlock = document.getElementById(`mem-block-${fromPhys}`);
+                    const toBlock = document.getElementById(`mem-block-${toPhys}`);
+                    
+                    // 模拟从源块提取数据
+                    fromBlock.classList.add('target-move');
+                    await sleep(300);
+                    
+                    // 注入到目标块 (临时修改样式，等下刷新会重置)
+                    toBlock.innerText = arrayData[i];
+                    toBlock.classList.add('array-element', 'target-move');
+                    fromBlock.innerText = '';
+                    fromBlock.classList.remove('array-element', 'target-move');
+                    
+                    await sleep(200);
+                    toBlock.classList.remove('target-move');
+                }
+            }
+
+            // 物理插入完成，更新底层数据结构
+            arrayData.splice(idx, 0, val);
+            
+            mathCalc.innerHTML = `<span class="text-emerald-400">SHIFT COMPLETE. INSERTING AT index [${idx}].</span>`;
+            
+            // 重新渲染完整并高亮新插入的块
+            initMemory();
+            const newBlock = document.getElementById(`mem-block-${ARR_START_OFFSET + idx}`);
+            newBlock.classList.add('target-read'); // 复用绿色高亮
+            await sleep(600);
+            newBlock.classList.remove('target-read');
+
+            updateMathBoard(idx, "INSERTED AT");
+            showToast(`Element ${val} successfully inserted.`, 'success');
+            isAnimating = false;
+        }
+
+        // --- 操作逻辑 3: O(N) 删除 ---
+        async function handleDelete() {
+            if(isAnimating) return;
+            
+            const idx = parseInt(document.getElementById('input-del').value);
+
+            if (idx < 0 || idx >= arrayData.length) {
+                showToast(`INVALID DELETION INDEX. Expected 0 to ${arrayData.length - 1}`);
+                return;
+            }
+
+            isAnimating = true;
+            updateMathBoard(idx, "TARGET TO DELETE");
+            
+            const physIndex = ARR_START_OFFSET + idx;
+            const block = document.getElementById(`mem-block-${physIndex}`);
+            
+            // 1. 瞬间毁灭目标
+            block.style.background = '#ef4444';
+            block.style.color = '#fff';
+            block.style.transform = 'scale(0)';
+            block.innerText = 'DEL';
+            await sleep(400);
+
+            mathCalc.innerHTML = `<span class="text-red-400 animate-pulse">ELEMENT DESTROYED. INITIATING O(N) COLLAPSE...</span>`;
+
+            // 2. 如果不是删末尾，后面的元素要全体向左坍缩挪动
+            if (idx < arrayData.length - 1) {
+                for (let i = idx + 1; i < arrayData.length; i++) {
+                    const fromPhys = ARR_START_OFFSET + i;
+                    const toPhys = ARR_START_OFFSET + i - 1;
+                    
+                    const fromBlock = document.getElementById(`mem-block-${fromPhys}`);
+                    const toBlock = document.getElementById(`mem-block-${toPhys}`);
+                    
+                    fromBlock.classList.add('target-move');
+                    await sleep(200);
+                    
+                    toBlock.innerText = arrayData[i];
+                    toBlock.classList.add('array-element');
+                    toBlock.style.transform = 'scale(1)'; // 恢复刚才可能被缩小的 block
+                    toBlock.style.background = ''; // 恢复被标红的 block
+                    
+                    fromBlock.innerText = '';
+                    fromBlock.classList.remove('array-element', 'target-move');
+                    await sleep(100);
+                }
+            }
+
+            // 物理删除完成，更新底层数据
+            arrayData.splice(idx, 1);
+            
+            mathCalc.innerHTML = `<span class="text-emerald-400">COLLAPSE COMPLETE. MEMORY DEFRAGGED.</span>`;
+            initMemory(); // 重新刷一遍去除残余动画样式
+            showToast(`Element at index [${idx}] deleted.`, 'success');
+            
+            isAnimating = false;
+        }
+
+        // 事件绑定
+        document.getElementById('btn-read').addEventListener('click', handleRead);
+        document.getElementById('btn-insert').addEventListener('click', handleInsert);
+        document.getElementById('btn-delete').addEventListener('click', handleDelete);
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            if(isAnimating) return;
+            arrayData = [15, 42, 8, 91, 33];
+            mathCalc.innerHTML = '等待操作指令...';
+            initMemory();
+        });
+
+        // 启动
+        window.onload = initMemory;
+
+    </script>
+</body>
+</html>

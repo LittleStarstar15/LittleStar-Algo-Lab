@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星华大学公开课 - 算法科学家小星星</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Google Fonts 科幻字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Noto+Sans+SC:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        /* 核心视觉设定 - 宇宙深空黑 */
+        body {
+            background-color: #03050a;
+            font-family: 'Noto Sans SC', sans-serif;
+            color: #e2e8f0;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(0, 240, 255, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(255, 215, 0, 0.05) 0%, transparent 40%),
+                linear-gradient(to bottom, transparent, rgba(0,0,0,0.8));
+        }
+
+        .font-sci-fi { font-family: 'Orbitron', sans-serif; }
+
+        /* 分类标题的光轨特效 */
+        .category-title {
+            position: relative;
+            padding-bottom: 8px;
+        }
+        .category-title::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0;
+            width: 100%; height: 2px;
+            background: linear-gradient(90deg, rgba(0, 240, 255, 0.8), transparent);
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+        }
+
+        /* 毛玻璃导航卡片 */
+        .module-card {
+            background: rgba(11, 15, 25, 0.5);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 240, 255, 0.15);
+            border-radius: 16px;
+            padding: 24px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+            text-decoration: none;
+            height: 100%;
+        }
+
+        /* 悬停特效：浮起并发光 */
+        .module-card:hover {
+            transform: translateY(-6px);
+            border-color: rgba(0, 240, 255, 0.6);
+            box-shadow: 0 10px 30px rgba(0, 240, 255, 0.15), inset 0 0 20px rgba(0, 240, 255, 0.05);
+        }
+
+        /* 深度学习卡片专属悬停色 */
+        .module-card.dl-card:hover {
+            border-color: rgba(217, 70, 239, 0.6);
+            box-shadow: 0 10px 30px rgba(217, 70, 239, 0.15), inset 0 0 20px rgba(217, 70, 239, 0.05);
+        }
+
+        /* 概率统计卡片专属悬停色 */
+        .module-card.math-card:hover {
+            border-color: rgba(255, 215, 0, 0.6);
+            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.15), inset 0 0 20px rgba(255, 215, 0, 0.05);
+        }
+
+        /* 卡片内部的扫描线特效 */
+        .module-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 50%; height: 100%;
+            background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.05), transparent);
+            transform: skewX(-20deg);
+            transition: all 0.7s;
+        }
+
+        .module-card:hover::before {
+            left: 200%;
+        }
+
+        /* 模块编号标记 */
+        .module-badge {
+            position: absolute;
+            top: 0; right: 0;
+            background: rgba(0, 240, 255, 0.1);
+            border-bottom-left-radius: 16px;
+            padding: 4px 12px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.75rem;
+            color: #00F0FF;
+            border-left: 1px solid rgba(0, 240, 255, 0.3);
+            border-bottom: 1px solid rgba(0, 240, 255, 0.3);
+        }
+
+        .dl-card .module-badge { color: #d946ef; background: rgba(217, 70, 239, 0.1); border-color: rgba(217, 70, 239, 0.3); }
+        .math-card .module-badge { color: #FFD700; background: rgba(255, 215, 0, 0.1); border-color: rgba(255, 215, 0, 0.3); }
+
+        /* 顶部装饰线 */
+        .top-glow {
+            width: 100%; height: 2px;
+            background: linear-gradient(90deg, transparent, #00F0FF, transparent);
+            box-shadow: 0 0 10px #00F0FF;
+        }
+        
+        .avatar-glow {
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.4), inset 0 0 10px rgba(0, 240, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4 md:p-10">
+
+    <div class="top-glow absolute top-0 left-0"></div>
+
+    <!-- 网站 Header：强化小星星 IP 属性 -->
+    <header class="w-full max-w-6xl flex flex-col md:flex-row justify-between items-center mb-12 mt-8">
+        <div class="flex items-center gap-6 mb-6 md:mb-0">
+            <!-- 头像框：使用本地根目录下的 LittleStar.png -->
+            <div class="w-16 h-16 rounded-full border-2 border-cyan-400 avatar-glow flex items-center justify-center bg-black/50 overflow-hidden">
+                <img src="LittleStar.png" alt="算法科学家小星星" class="w-full h-full object-cover">
+            </div>
+            <div>
+                <h1 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-white drop-shadow-[0_0_5px_rgba(0,240,255,0.5)]">
+                    算法科学家小星星
+                </h1>
+                <p class="text-cyan-500/60 font-sci-fi text-sm tracking-widest mt-1">XINGHUA UNIV. ALGORITHM DATABASE</p>
+            </div>
+        </div>
+        
+        <div class="bg-cyan-900/30 border border-cyan-500/30 px-6 py-2 rounded-full font-sci-fi text-sm text-cyan-300">
+            SYSTEM STATUS: <span class="text-emerald-400 animate-pulse ml-2">ONLINE</span>
+        </div>
+    </header>
+
+    <!-- 欢迎语 -->
+    <div class="w-full max-w-6xl mb-16 border-l-4 border-cyan-400 pl-4">
+        <h2 class="text-xl font-bold text-gray-200 mb-2">欢迎来到星华大学特供公开课终端</h2>
+        <p class="text-gray-400 text-sm md:text-base leading-relaxed max-w-3xl">
+            地球人你好，这里是我在地球潜伏期间建立的算法交互实验室。<br>
+            不要死记硬背枯燥的代码，请在下方选择你想探索的学科领域，用操控宇宙飞船的方式来理解计算机底层的核心逻辑。
+        </p>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 模块 1：数据结构与算法 (Data Structures & Algorithms) -->
+    <!-- ========================================== -->
+    <section class="w-full max-w-6xl mb-16">
+        <h2 class="text-2xl font-bold text-cyan-300 font-sci-fi category-title mb-8 flex items-center gap-3">
+            <span class="text-3xl">🧩</span> DATA STRUCTURES & ALGORITHMS
+            <span class="text-sm text-cyan-500/50 ml-2 hidden md:inline">数据结构与算法</span>
+        </h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            
+            <a href="algorithm_intro.html" class="module-card group">
+                <div class="module-badge">UNIT 01</div>
+                <div class="w-12 h-12 rounded bg-blue-900/40 border border-blue-500/30 flex items-center justify-center mb-4 group-hover:bg-blue-500/20 transition-colors">
+                    <span class="text-2xl">🏭</span>
+                </div>
+                <h3 class="text-lg font-bold text-gray-100 mb-2 font-sci-fi group-hover:text-cyan-300 transition-colors">算法本质解析器</h3>
+                <p class="text-gray-400 text-sm flex-1 leading-relaxed">
+                    算法是高等数学？错！它只是一个将“宇宙混沌”转化为“绝对秩序”的无情加工厂。一键演示 Input -> Logic -> Output 工作流。
+                </p>
+            </a>
+
+            <a href="complexity.html" class="module-card group">
+                <div class="module-badge">UNIT 02</div>
+                <div class="w-12 h-12 rounded bg-yellow-900/40 border border-yellow-500/30 flex items-center justify-center mb-4 group-hover:bg-yellow-500/20 transition-colors">
+                    <span class="text-2xl">⏱️</span>
+                </div>
+                <h3 class="text-lg font-bold text-gray-100 mb-2 font-sci-fi group-hover:text-cyan-300 transition-colors">复杂度可视化引擎</h3>
+                <p class="text-gray-400 text-sm flex-1 leading-relaxed">
+                    面试必问的 Big O 到底是什么？拖动数据量(N)滑块，亲眼见证 O(1) 的优雅与 O(N²) 引发系统崩溃的非线性灾难。
+                </p>
+            </a>
+
+            <a href="data_structures.html" class="module-card group">
+                <div class="module-badge">UNIT 03</div>
+                <div class="w-12 h-12 rounded bg-emerald-900/40 border border-emerald-500/30 flex items-center justify-center mb-4 group-hover:bg-emerald-500/20 transition-colors">
+                    <span class="text-2xl">📦</span>
+                </div>
+                <h3 class="text-lg font-bold text-gray-100 mb-2 font-sci-fi group-hover:text-cyan-300 transition-colors">星际数据收容单元</h3>
+                <p class="text-gray-400 text-sm flex-1 leading-relaxed">
+                    如果算法是发动机，数据结构就是油箱。全息投影演示数组、链表、栈、队列、树与图的核心调度逻辑。
+                </p>
+            </a>
+
+            <a href="array_visualizer.html" class="module-card group">
+                <div class="module-badge">UNIT 04</div>
+                <div class="w-12 h-12 rounded bg-purple-900/40 border border-purple-500/30 flex items-center justify-center mb-4 group-hover:bg-purple-500/20 transition-colors">
+                    <span class="text-2xl">💾</span>
+                </div>
+                <h3 class="text-lg font-bold text-gray-100 mb-2 font-sci-fi group-hover:text-cyan-300 transition-colors">量子内存与数组寻址仪</h3>
+                <p class="text-gray-400 text-sm flex-1 leading-relaxed">
+                    深潜计算机底层，亲眼见证连续内存的 O(1) 空间跃迁与 O(N) 插入时引发的空间坍缩噩梦。
+                </p>
+            </a>
+
+            <a href="pathfinder_ultimate.html" class="module-card group">
+                <div class="module-badge">UNIT 05</div>
+                <div class="w-12 h-12 rounded bg-orange-900/40 border border-orange-500/30 flex items-center justify-center mb-4 group-hover:bg-orange-500/20 transition-colors">
+                    <span class="text-2xl">🛸</span>
+                </div>
+                <h3 class="text-lg font-bold text-gray-100 mb-2 font-sci-fi group-hover:text-cyan-300 transition-colors">A* 多维寻路模拟器</h3>
+                <p class="text-gray-400 text-sm flex-1 leading-relaxed">
+                    飞船坠毁陨石阵怎么回家？手绘暗物质迷宫，一键对比 BFS（无脑穷举）与 A-Star（精算师）的智商差距。
+                </p>
+            </a>
+
+        </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 模块 2：概率与统计 (Probability & Statistics) -->
+    <!-- ========================================== -->
+    <section class="w-full max-w-6xl mb-16">
+        <h2 class="text-2xl font-bold text-yellow-400 font-sci-fi category-title mb-8 flex items-center gap-3" style="--tw-shadow-color: rgba(255, 215, 0, 0.5); --tw-gradient-from: rgba(255, 215, 0, 0.8);">
+            <span class="text-3xl">🎲</span> PROBABILITY & STATISTICS
+            <span class="text-sm text-yellow-500/50 ml-2 hidden md:inline">概率与统计</span>
+        </h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            
+            <a href="bayes_engine.html" class="module-card math-card group">
+                <div class="module-badge">UNIT 01</div>
+                <div class="w-12 h-12 rounded bg-yellow-900/40 border border-yellow-500/30 flex items-center justify-center mb-4 group-hover:bg-yellow-500/20 transition-colors">
+                    <span class="text-2xl">⚖️</span>
+                </div>
+                <h3 class="text-lg font-bold text-gray-100 mb-2 font-sci-fi group-hover:text-yellow-400 transition-colors">贝叶斯概率引擎</h3>
+                <p class="text-gray-400 text-sm flex-1 leading-relaxed">
+                    准确率 99% 的雷达报警，UFO 真的来了吗？拖动滑块，用一万个像素点拆解“后验概率”的终极反直觉陷阱。
+                </p>
+            </a>
+
+        </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 模块 3：深度学习与 AI (Deep Learning & AI) -->
+    <!-- ========================================== -->
+    <section class="w-full max-w-6xl mb-16">
+        <h2 class="text-2xl font-bold text-fuchsia-400 font-sci-fi category-title mb-8 flex items-center gap-3" style="--tw-shadow-color: rgba(217, 70, 239, 0.5); --tw-gradient-from: rgba(217, 70, 239, 0.8);">
+            <span class="text-3xl">🧠</span> DEEP LEARNING & AI
+            <span class="text-sm text-fuchsia-500/50 ml-2 hidden md:inline">深度学习与人工智能</span>
+        </h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            
+            <a href="cnn_visualizer.html" class="module-card dl-card group">
+                <div class="module-badge">UNIT 01</div>
+                <div class="w-12 h-12 rounded bg-fuchsia-900/40 border border-fuchsia-500/30 flex items-center justify-center mb-4 group-hover:bg-fuchsia-500/20 transition-colors">
+                    <span class="text-2xl">👁️</span>
+                </div>
+                <h3 class="text-lg font-bold text-gray-100 mb-2 font-sci-fi group-hover:text-fuchsia-400 transition-colors">CNN 前向传播透视仪</h3>
+                <p class="text-gray-400 text-sm flex-1 leading-relaxed">
+                    AI 是如何看见世界的？亲自动手配置 Padding 和 Stride，体验 Convolution（卷积提取）、ReLU 和 Pooling（池化降维）的完整流水线。
+                </p>
+            </a>
+
+            <a href="gesture_control.html" class="module-card dl-card group">
+                <div class="module-badge">UNIT 02</div>
+                <div class="w-12 h-12 rounded bg-pink-900/40 border border-pink-500/30 flex items-center justify-center mb-4 group-hover:bg-pink-500/20 transition-colors">
+                    <span class="text-2xl">🖐️</span>
+                </div>
+                <h3 class="text-lg font-bold text-gray-100 mb-2 font-sci-fi group-hover:text-fuchsia-400 transition-colors">生物接口：手势控制终端</h3>
+                <p class="text-gray-400 text-sm flex-1 leading-relaxed">
+                    无需任何后端服务器！调用本地摄像头与纯前端边缘计算模型，体验“隔空捏合”触发系统指令的赛博朋克交互。
+                </p>
+            </a>
+
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="mt-8 border-t border-cyan-900/50 w-full max-w-6xl py-8 flex flex-col md:flex-row justify-between items-center">
+        <p class="text-gray-500 text-sm font-sci-fi mb-4 md:mb-0">© 2026 XINGHUA UNIV. ALIEN SCIENTIST. ALL RIGHTS RESERVED.</p>
+        <div class="flex gap-4">
+            <span class="text-gray-500 text-sm hover:text-cyan-400 cursor-pointer transition-colors">XIAOHONGSHU: @算法科学家小星星</span>
+        </div>
+    </footer>
+
+</body>
+</html>

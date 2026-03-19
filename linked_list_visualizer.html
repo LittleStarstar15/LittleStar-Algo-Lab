@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星华大学：链表与指针引擎</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Noto+Sans+SC:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            background-color: #03050a;
+            font-family: 'Noto Sans SC', sans-serif;
+            color: #e2e8f0;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 15% 20%, rgba(217, 70, 239, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 85% 80%, rgba(0, 240, 255, 0.05) 0%, transparent 40%),
+                linear-gradient(to bottom, transparent, rgba(0,0,0,0.8));
+        }
+
+        .font-sci-fi { font-family: 'Orbitron', sans-serif; }
+
+        .glass-panel {
+            background: rgba(11, 15, 25, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(217, 70, 239, 0.2);
+            box-shadow: 0 0 30px rgba(217, 70, 239, 0.05);
+        }
+
+        .tab-btn { transition: all 0.3s ease; border-bottom: 2px solid transparent; white-space: nowrap; }
+        .tab-btn.active { color: #d946ef; border-bottom-color: #d946ef; text-shadow: 0 0 8px rgba(217, 70, 239, 0.6); font-weight: bold; }
+
+        /* 链表节点父容器 (去除一切导致坐标偏移的属性) */
+        .ll-node-container {
+            position: absolute;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 10;
+            cursor: grab;
+            user-select: none;
+        }
+
+        .ll-node-container.dragging {
+            transition: none !important;
+            cursor: grabbing;
+            z-index: 50 !important;
+        }
+
+        /* 能量舱主体 */
+        .ll-node {
+            background: rgba(15, 23, 42, 0.9);
+            border: 2px solid rgba(217, 70, 239, 0.5);
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(217, 70, 239, 0.1), inset 0 0 10px rgba(217, 70, 239, 0.1);
+            display: flex; flex-direction: column; overflow: hidden;
+            width: 100px;
+        }
+
+        .ll-node.target-search {
+            background: rgba(16, 185, 129, 0.3) !important; border-color: #10b981 !important;
+            box-shadow: 0 0 20px #10b981 !important; transform: scale(1.1);
+        }
+
+        .ll-node.target-operate {
+            background: rgba(255, 215, 0, 0.3) !important; border-color: #FFD700 !important;
+            box-shadow: 0 0 20px #FFD700 !important; transform: scale(1.1);
+        }
+
+        .node-addr {
+            background: rgba(217, 70, 239, 0.2); color: #f0abfc;
+            font-family: 'Orbitron', monospace; font-size: 10px; text-align: center; padding: 2px 0;
+            border-bottom: 1px solid rgba(217, 70, 239, 0.4);
+            height: 15px; box-sizing: border-box; line-height: 10px;
+        }
+
+        .node-body { display: flex; height: 40px; }
+        .node-val {
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            font-family: 'Orbitron', monospace; font-size: 18px; font-weight: bold; color: #FFF;
+            border-right: 1px dashed rgba(217, 70, 239, 0.4);
+        }
+        .node-ptr {
+            flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-family: 'Orbitron', monospace; font-size: 9px; color: #a8a29e; background: rgba(0,0,0,0.5);
+        }
+        .node-ptr span { color: #00F0FF; font-weight: bold; }
+
+        .pseudo-node {
+            background: rgba(0, 0, 0, 0.8); border: 2px dashed #00F0FF; border-radius: 8px;
+            width: 60px; height: 40px; display: flex; align-items: center; justify-content: center;
+            font-family: 'Orbitron'; font-size: 12px; color: #00F0FF; font-weight: bold;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+        }
+
+        /* SVG 连线层 */
+        svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; overflow: visible; }
+        .ptr-line {
+            stroke: rgba(0, 240, 255, 0.4); stroke-width: 3; fill: none; transition: all 0.3s;
+            stroke-dasharray: 8 4; animation: march 1s linear infinite;
+        }
+        .ptr-line-prev {
+            stroke: rgba(234, 179, 8, 0.4); stroke-width: 3; fill: none; transition: all 0.3s;
+            stroke-dasharray: 8 4; animation: march-rev 1s linear infinite;
+        }
+        .ptr-line.active { stroke: #10b981; stroke-width: 4; filter: drop-shadow(0 0 5px #10b981); stroke-dasharray: none; animation: none;}
+        .ptr-line.delete { stroke: #ef4444; stroke-width: 4; filter: drop-shadow(0 0 5px #ef4444); stroke-dasharray: none; animation: none;}
+
+        @keyframes march { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
+        @keyframes march-rev { from { stroke-dashoffset: 0; } to { stroke-dashoffset: 24; } }
+
+        .math-board {
+            background: rgba(0, 0, 0, 0.6); border: 1px dashed rgba(217, 70, 239, 0.3);
+            border-radius: 8px; padding: 12px; font-family: 'Orbitron', monospace;
+        }
+
+        button { transition: all 0.2s; }
+        button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 0 15px rgba(217, 70, 239, 0.4); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+        
+        .control-input { background: rgba(0,0,0,0.6); border: 1px solid rgba(217, 70, 239, 0.3); color: #d946ef; text-align: center; border-radius: 4px; padding: 4px; width: 60px; outline: none; font-family: 'Orbitron'; }
+        .control-input:focus { border-color: #d946ef; box-shadow: 0 0 8px rgba(217, 70, 239, 0.5); }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; } input[type=number] { -moz-appearance: textfield; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4 md:p-6 pt-16 md:pt-6">
+
+    <!-- 🚀 返回主菜单按钮 (已完美居中平齐对齐) -->
+    <a href="index.html" class="fixed top-4 left-4 md:top-6 md:left-6 z-50 flex items-center gap-2 px-3 py-2 md:px-4 md:py-2 rounded border border-cyan-500/30 bg-black/60 backdrop-blur-md text-cyan-500/70 hover:text-cyan-300 hover:border-cyan-400 hover:shadow-[0_0_15px_rgba(0,240,255,0.4)] transition-all group text-decoration-none">
+        <svg class="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        <span class="hidden md:inline tracking-wider font-sci-fi text-xs md:text-sm">MAIN TERMINAL</span>
+    </a>
+
+    <!-- 顶部标题 -->
+    <div class="text-center mb-6 mt-4 md:mt-0 w-full">
+        <h1 class="text-3xl md:text-4xl font-sci-fi font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-400 to-cyan-400 mb-2 drop-shadow-[0_0_8px_rgba(217,70,239,0.5)]">
+            星际数据收容单元：链表 (LINKED LIST)
+        </h1>
+        <p class="text-fuchsia-400/60 text-sm tracking-widest font-sci-fi">NON-CONTIGUOUS MEMORY & POINTER DYNAMICS</p>
+    </div>
+
+    <!-- 理论铺垫区 -->
+    <div class="w-full max-w-6xl glass-panel rounded-2xl p-6 md:p-8 mb-6 flex flex-col md:flex-row gap-8 items-center border-l-4 border-l-fuchsia-400">
+        <div class="flex-1">
+            <h2 class="text-xl font-bold text-white mb-3">打游击战的数据容器：<span class="text-fuchsia-400">随机星区与激光指针</span>。</h2>
+            <p class="text-gray-400 text-sm leading-relaxed mb-2">
+                上一节的“数组”是买下一整排连续的太空港。但如果内存碎片化，没有一大块空地怎么办？<strong class="text-white">链表应运而生</strong>。<br>
+                每个数据（能量舱）可以随机散落在宇宙的任何角落，只要每个舱室携带一个发射器（<span class="text-cyan-400 font-bold">Pointer / 指针</span>），指向下一个舱室的物理坐标（内存地址）即可。
+            </p>
+            <p class="text-gray-400 text-sm leading-relaxed">
+                <span class="text-emerald-400 font-bold">优势：</span>插入和删除极快（O(1)），只需改变激光指针的朝向，不用任何人搬家。<br>
+                <span class="text-red-400 font-bold">劣势：</span>想要找到第 N 个人？对不起，你只能从 HEAD (锚点) 出发，顺藤摸瓜一个一个找过去（O(N)）。
+            </p>
+        </div>
+    </div>
+
+    <!-- 场景切换 Tabs -->
+    <div class="flex gap-4 md:gap-8 mb-6 border-b border-gray-800 w-full max-w-6xl px-4 overflow-x-auto pb-1">
+        <button id="tab-singly" class="tab-btn active pb-3 font-sci-fi text-gray-400 hover:text-gray-200" onclick="switchListType('singly')">
+            [1] SINGLY (单向链表)
+        </button>
+        <button id="tab-doubly" class="tab-btn pb-3 font-sci-fi text-gray-400 hover:text-gray-200" onclick="switchListType('doubly')">
+            [2] DOUBLY (双向链表)
+        </button>
+        <button id="tab-circular" class="tab-btn pb-3 font-sci-fi text-gray-400 hover:text-gray-200" onclick="switchListType('circular')">
+            [3] CIRCULAR (循环链表)
+        </button>
+    </div>
+
+    <!-- 交互式教具主区 -->
+    <div class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- 左侧/上方：链表可视化画布 (占 8 列) -->
+        <div class="lg:col-span-8 glass-panel rounded-2xl p-4 flex flex-col relative overflow-hidden min-h-[400px]" id="canvas-wrapper">
+            
+            <div class="absolute top-4 left-4 text-[10px] text-fuchsia-500/50 font-sci-fi z-30">SCATTERED MEMORY SECTOR (碎片化内存区)</div>
+            
+            <!-- 统一坐标系：SVG 和 节点层 100% 重合 -->
+            <div class="relative w-full flex-1 mt-8" id="coordinate-system">
+                <svg id="svg-layer" class="absolute inset-0 w-full h-full pointer-events-none z-0"></svg>
+                <div id="nodes-layer" class="absolute inset-0 w-full h-full z-10"></div>
+            </div>
+            
+        </div>
+
+        <!-- 右侧/下方：操作控制台 (占 4 列) -->
+        <div class="lg:col-span-4 glass-panel rounded-2xl p-6 flex flex-col">
+            <h2 class="text-lg font-bold text-fuchsia-300 font-sci-fi mb-4 border-b border-fuchsia-500/30 pb-2">
+                POINTER CONSOLE (指针控制台)
+            </h2>
+
+            <div class="math-board mb-6">
+                <div class="text-[9px] text-fuchsia-500/50 mb-1">EXECUTION LOG</div>
+                <div id="code-log" class="text-xs text-gray-300 space-y-1 h-20 overflow-y-auto">
+                    <div>> SYSTEM READY.</div>
+                    <div>> WAITING FOR COMMAND...</div>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <div class="border-l-2 border-emerald-500 pl-3">
+                    <label class="text-[10px] text-emerald-400 font-sci-fi block mb-1">SEARCH / 查找 O(N)</label>
+                    <div class="flex gap-2 items-center">
+                        <span class="text-gray-400 font-sci-fi text-xs">Index:</span>
+                        <input type="number" id="inp-search" class="control-input" value="2" min="0" max="10">
+                        <button onclick="handleSearch()" class="ml-auto px-4 py-1.5 rounded border border-emerald-500/50 bg-emerald-900/30 text-emerald-400 text-xs font-bold font-sci-fi">TRAVERSE</button>
+                    </div>
+                </div>
+
+                <div class="border-l-2 border-yellow-500 pl-3">
+                    <label class="text-[10px] text-yellow-400 font-sci-fi block mb-1">INSERT / 插入 O(1)</label>
+                    <div class="flex gap-2 items-center mb-2">
+                        <span class="text-gray-400 font-sci-fi text-xs w-10">Idx:</span>
+                        <input type="number" id="inp-ins-idx" class="control-input h-6" value="1" min="0" max="10">
+                    </div>
+                    <div class="flex gap-2 items-center">
+                        <span class="text-gray-400 font-sci-fi text-xs w-10">Val:</span>
+                        <input type="number" id="inp-ins-val" class="control-input h-6" value="99" min="0" max="999">
+                        <button onclick="handleInsert()" class="ml-auto px-4 py-1.5 rounded border border-yellow-500/50 bg-yellow-900/30 text-yellow-400 text-xs font-bold font-sci-fi">INSERT</button>
+                    </div>
+                    <p class="text-[8px] text-gray-500 mt-1">* 插入动作本身 O(1)，但寻址到该位置需 O(N)</p>
+                </div>
+
+                <div class="border-l-2 border-red-500 pl-3">
+                    <label class="text-[10px] text-red-400 font-sci-fi block mb-1">DELETE / 删除 O(1)</label>
+                    <div class="flex gap-2 items-center">
+                        <span class="text-gray-400 font-sci-fi text-xs">Index:</span>
+                        <input type="number" id="inp-del" class="control-input" value="1" min="0" max="10">
+                        <button onclick="handleDelete()" class="ml-auto px-4 py-1.5 rounded border border-red-500/50 bg-red-900/30 text-red-400 text-xs font-bold font-sci-fi">DELETE</button>
+                    </div>
+                </div>
+            </div>
+            
+            <button onclick="resetList()" class="mt-auto w-full py-2 rounded border border-gray-600 bg-black/40 text-gray-400 text-xs font-sci-fi hover:text-white mt-4">RESET MATRIX</button>
+
+        </div>
+    </div>
+
+    <!-- 弹窗通知 -->
+    <div id="toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg border bg-black/80 backdrop-blur-md font-sci-fi text-sm font-bold z-50 transition-all duration-300 opacity-0 pointer-events-none"></div>
+
+    <script>
+        // --- 系统状态与工具 ---
+        let listType = 'singly'; 
+        let nodes = []; 
+        let headPos = { x: 0, y: 100 }; 
+        let isAnimating = false;
+
+        const nodesLayer = document.getElementById('nodes-layer');
+        const svgLayer = document.getElementById('svg-layer');
+        const codeLog = document.getElementById('code-log');
+        const toastEl = document.getElementById('toast');
+
+        function randomAddr() {
+            return '0x' + Math.floor(Math.random() * 4096).toString(16).toUpperCase().padStart(3, '0');
+        }
+
+        const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+        function showToast(msg, type='error') {
+            toastEl.innerHTML = msg;
+            toastEl.className = `fixed bottom-10 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg border font-sci-fi text-sm font-bold z-50 transition-all duration-300 pointer-events-none ${
+                type === 'error' ? 'bg-red-900/80 border-red-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.5)]' : 'bg-emerald-900/80 border-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.5)]'
+            }`;
+            toastEl.style.opacity = '1'; toastEl.style.transform = 'translate(-50%, -10px)';
+            setTimeout(() => { toastEl.style.opacity = '0'; toastEl.style.transform = 'translate(-50%, 0)'; }, 2500);
+        }
+
+        function addLog(msg, color='text-gray-300') {
+            const div = document.createElement('div');
+            div.innerHTML = `<span class="text-fuchsia-500">></span> <span class="${color}">${msg}</span>`;
+            codeLog.appendChild(div);
+            codeLog.scrollTop = codeLog.scrollHeight;
+        }
+
+        // --- 核心渲染引擎 ---
+        function initList() {
+            headPos = { x: 0, y: 100 };
+            nodes = [
+                { id: 'n1', val: 42, addr: randomAddr(), x: 100, y: 100 },
+                { id: 'n2', val: 15, addr: randomAddr(), x: 280, y: 40 },
+                { id: 'n3', val: 99, addr: randomAddr(), x: 460, y: 160 },
+                { id: 'n4', val: 7,  addr: randomAddr(), x: 640, y: 80 }
+            ];
+            render();
+            codeLog.innerHTML = '<div>> MATRIX RESET.</div>';
+        }
+
+        function switchListType(type) {
+            if(isAnimating) return;
+            listType = type;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`tab-${type}`).classList.add('active');
+            addLog(`SWITCHED TO ${type.toUpperCase()} LIST`, 'text-cyan-400');
+            render();
+        }
+
+        function resetList() {
+            if(isAnimating) return;
+            initList();
+        }
+
+        // 画一条贝塞尔曲线连接两个点 (使用极其精确的 3 次贝塞尔曲线，强制水平出/水平入)
+        function createPath(x1, y1, x2, y2, isPrev=false, isLoop=false) {
+            if(isLoop) {
+                // 循环链表：尾巴(底部中心) 到 头部(底部中心)
+                let cx1 = x1 + 40; let cy1 = y1 + 80;
+                let cx2 = x2 - 40; let cy2 = y2 + 80;
+                return `<path class="ptr-line" d="M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}" marker-end="url(#arrowhead-cyan)" />`;
+            }
+            if(isPrev) {
+                // 双向链表：顶部跳跃 (顶部中心 到 顶部中心)
+                let cx1 = x1 - 30; let cy1 = y1 - 40;
+                let cx2 = x2 + 30; let cy2 = y2 - 40;
+                return `<path class="ptr-line-prev" d="M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}" marker-end="url(#arrowhead-yellow)" />`;
+            } else {
+                // 普通 NEXT：从方块右边水平出来，水平进入下一个方块的左边，形成优美的 S 曲线
+                return `<path class="ptr-line" d="M ${x1} ${y1} C ${x1 + 40} ${y1}, ${x2 - 40} ${y2}, ${x2} ${y2}" marker-end="url(#arrowhead-cyan)" />`;
+            }
+        }
+
+        // 渲染 DOM 物理节点
+        function renderNodes() {
+            nodesLayer.innerHTML = '';
+            
+            // HEAD 锚点 (宽 60, 高 40)
+            nodesLayer.innerHTML += `<div class="ll-node-container pseudo-node" style="left: ${headPos.x}px; top: ${headPos.y}px;" id="node-head">HEAD</div>`;
+
+            // 画节点 (宽 100, 总高 55)
+            nodes.forEach((n, i) => {
+                let nextAddr = 'NULL';
+                if(i < nodes.length - 1) nextAddr = nodes[i+1].addr;
+                else if (listType === 'circular') nextAddr = nodes[0].addr;
+
+                let prevHtml = '';
+                if(listType === 'doubly') {
+                    let prevAddr = i > 0 ? nodes[i-1].addr : 'NULL';
+                    prevHtml = `<div class="node-ptr border-r border-dashed border-fuchsia-500/40" style="font-size:8px;">PREV<br><span class="text-yellow-400">${prevAddr}</span></div>`;
+                }
+
+                nodesLayer.innerHTML += `
+                    <div class="ll-node-container" style="left: ${n.x}px; top: ${n.y}px;" id="node-${n.id}">
+                        <div class="ll-node" id="box-${n.id}">
+                            <div class="node-addr">${n.addr}</div>
+                            <div class="node-body">
+                                <div class="node-val">${n.val}</div>
+                                ${prevHtml}
+                                <div class="node-ptr">NEXT<br><span>${nextAddr}</span></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // 实时渲染 SVG 激光连线 (精确到像素级对齐边界)
+        function renderLines() {
+            let svgHTML = `<defs>
+                    <marker id="arrowhead-cyan" markerWidth="8" markerHeight="6" refX="6" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="rgba(0, 240, 255, 0.8)" /></marker>
+                    <marker id="arrowhead-yellow" markerWidth="8" markerHeight="6" refX="6" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="rgba(234, 179, 8, 0.8)" /></marker>
+                </defs>`;
+
+            if(nodes.length === 0) {
+                svgLayer.innerHTML = svgHTML;
+                return;
+            }
+
+            // Head (60x40) 到 第一个节点 (100x55)
+            // Head 锚点：右侧中心 (x+60, y+20) -> Node1 锚点：左侧中心 (x-2, y+35)
+            svgHTML += createPath(headPos.x + 60, headPos.y + 20, nodes[0].x - 2, nodes[0].y + 35);
+
+            for(let i=0; i<nodes.length; i++) {
+                const cur = nodes[i];
+                
+                // Next Pointers (当前节点右侧中心 -> 下一节点左侧中心)
+                if (i < nodes.length - 1) {
+                    const nxt = nodes[i+1];
+                    svgHTML += createPath(cur.x + 100, cur.y + 35, nxt.x - 2, nxt.y + 35, false, false);
+                }
+                
+                // Prev Pointers (当前节点顶部中心 -> 上一节点顶部中心)
+                if (listType === 'doubly' && i > 0) {
+                    const prv = nodes[i-1];
+                    svgHTML += createPath(cur.x + 50, cur.y, prv.x + 50, prv.y, true, false);
+                }
+            }
+
+            // Circular tail to head (尾节点底部中心 -> 头部节点底部中心)
+            if(listType === 'circular' && nodes.length > 0) {
+                const tail = nodes[nodes.length - 1];
+                const headNode = nodes[0];
+                svgHTML += createPath(tail.x + 50, tail.y + 55, headNode.x + 50, headNode.y + 55, false, true);
+            }
+
+            svgLayer.innerHTML = svgHTML;
+        }
+
+        function render() {
+            renderNodes();
+            renderLines();
+        }
+
+        // --- 全新物理拖拽交互引擎 ---
+        let draggedObj = null;
+        let startMouseX = 0, startMouseY = 0;
+        let startNodeX = 0, startNodeY = 0;
+
+        function handleDragStart(e) {
+            if(isAnimating) return;
+            const container = e.target.closest('.ll-node-container');
+            if (!container) return;
+
+            let id = container.id.replace('node-', '');
+            if (id === 'head') {
+                draggedObj = headPos;
+                draggedObj.id = 'head';
+            } else {
+                draggedObj = nodes.find(n => n.id === id);
+            }
+
+            if (!draggedObj) return;
+
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            startMouseX = clientX;
+            startMouseY = clientY;
+            startNodeX = draggedObj.x;
+            startNodeY = draggedObj.y;
+
+            container.classList.add('dragging');
+            if (!e.touches) e.preventDefault(); 
+        }
+
+        function handleDragMove(e) {
+            if (!draggedObj) return;
+            
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            draggedObj.x = startNodeX + (clientX - startMouseX);
+            draggedObj.y = startNodeY + (clientY - startMouseY);
+
+            const el = document.getElementById(`node-${draggedObj.id}`);
+            if (el) {
+                el.style.left = `${draggedObj.x}px`;
+                el.style.top = `${draggedObj.y}px`;
+            }
+            renderLines(); // 仅重新绘制连线，性能极高
+        }
+
+        function handleDragEnd() {
+            if (draggedObj) {
+                const el = document.getElementById(`node-${draggedObj.id}`);
+                if (el) el.classList.remove('dragging');
+                draggedObj = null;
+            }
+        }
+
+        nodesLayer.addEventListener('mousedown', handleDragStart);
+        window.addEventListener('mousemove', handleDragMove);
+        window.addEventListener('mouseup', handleDragEnd);
+        nodesLayer.addEventListener('touchstart', handleDragStart, {passive: false});
+        window.addEventListener('touchmove', handleDragMove, {passive: false});
+        window.addEventListener('touchend', handleDragEnd);
+
+
+        // --- 操作逻辑 ---
+        async function handleSearch() {
+            if(isAnimating) return;
+            const targetIdx = parseInt(document.getElementById('inp-search').value);
+            if(targetIdx < 0 || targetIdx >= nodes.length) { showToast('INDEX OUT OF BOUNDS'); return; }
+
+            isAnimating = true;
+            addLog(`START TRAVERSAL FOR INDEX [${targetIdx}]...`, 'text-emerald-400');
+
+            document.getElementById('node-head').style.boxShadow = '0 0 20px #00F0FF';
+            await sleep(500);
+
+            for(let i=0; i<=targetIdx; i++) {
+                const box = document.getElementById(`box-${nodes[i].id}`);
+                box.classList.add('target-search');
+                addLog(`Checking Node at ${nodes[i].addr}...`);
+                await sleep(600);
+                if(i !== targetIdx) box.classList.remove('target-search');
+            }
+
+            addLog(`NODE FOUND AT INDEX [${targetIdx}]!`, 'text-emerald-400 font-bold');
+            await sleep(1000);
+            document.getElementById(`box-${nodes[targetIdx].id}`).classList.remove('target-search');
+            document.getElementById('node-head').style.boxShadow = '';
+            
+            isAnimating = false;
+        }
+
+        async function handleInsert() {
+            if(isAnimating) return;
+            if(nodes.length >= 5) { showToast('MAX 5 NODES ALLOWED FOR VISUALIZATION'); return; }
+            const idx = parseInt(document.getElementById('inp-ins-idx').value);
+            const val = parseInt(document.getElementById('inp-ins-val').value);
+            if(idx < 0 || idx > nodes.length) { showToast('INVALID INSERT INDEX'); return; }
+
+            isAnimating = true;
+            addLog(`INSERTING ${val} AT INDEX [${idx}]...`, 'text-yellow-400');
+
+            const newNode = {
+                id: 'n' + Date.now(),
+                val: val,
+                addr: randomAddr(),
+                x: 100 + idx * 180,
+                y: 250
+            };
+
+            nodesLayer.innerHTML += `
+                <div class="ll-node-container" style="left: ${newNode.x}px; top: ${newNode.y}px;" id="node-${newNode.id}">
+                    <div class="ll-node target-operate" id="box-${newNode.id}">
+                        <div class="node-addr">${newNode.addr}</div>
+                        <div class="node-body">
+                            <div class="node-val">${newNode.val}</div>
+                            ${listType === 'doubly' ? `<div class="node-ptr border-r border-dashed border-fuchsia-500/40">PREV<br><span>?</span></div>` : ''}
+                            <div class="node-ptr">NEXT<br><span>?</span></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            await sleep(800);
+
+            addLog(`1. new_node.next = prev_node.next`, 'text-cyan-300');
+            await sleep(800);
+            
+            addLog(`2. prev_node.next = new_node`, 'text-cyan-300');
+            if(listType === 'doubly') addLog(`(Doubly logic: linking PREV pointers...)`, 'text-yellow-400');
+            await sleep(800);
+
+            nodes.splice(idx, 0, newNode);
+            newNode.y = Math.random() > 0.5 ? 40 : 160;
+
+            render();
+            const box = document.getElementById(`box-${newNode.id}`);
+            box.classList.add('target-operate');
+            await sleep(1000);
+            box.classList.remove('target-operate');
+            
+            addLog(`INSERT COMPLETE. (No array shifting needed!)`, 'text-emerald-400 font-bold');
+            isAnimating = false;
+        }
+
+        async function handleDelete() {
+            if(isAnimating) return;
+            if(nodes.length === 0) { showToast('LIST IS EMPTY'); return; }
+            const idx = parseInt(document.getElementById('inp-del').value);
+            if(idx < 0 || idx >= nodes.length) { showToast('INVALID DELETE INDEX'); return; }
+
+            isAnimating = true;
+            addLog(`DELETING NODE AT INDEX [${idx}]...`, 'text-red-400');
+
+            const targetNode = nodes[idx];
+            const box = document.getElementById(`box-${targetNode.id}`);
+            
+            box.style.background = 'rgba(239, 68, 68, 0.4)';
+            box.style.borderColor = '#ef4444';
+            box.style.boxShadow = '0 0 20px #ef4444';
+            await sleep(800);
+
+            addLog(`1. prev_node.next = target_node.next`, 'text-cyan-300');
+            if(listType === 'doubly') addLog(`(Doubly logic: next_node.prev = target.prev)`, 'text-yellow-400');
+            await sleep(800);
+
+            document.getElementById(`node-${targetNode.id}`).style.transform = 'translateY(100px) scale(0)';
+            document.getElementById(`node-${targetNode.id}`).style.opacity = '0';
+            await sleep(500);
+
+            nodes.splice(idx, 1);
+            
+            render();
+            addLog(`DELETE COMPLETE. Memory Freed.`, 'text-emerald-400 font-bold');
+            isAnimating = false;
+        }
+
+        window.onload = initList;
+        window.addEventListener('resize', render);
+
+    </script>
+</body>
+</html>

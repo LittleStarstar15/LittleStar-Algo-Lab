@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星华大学理论计算模块：复杂度可视化</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Google Fonts 科幻字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* 继承星华大学视觉规范 - 宇宙深空黑 */
+        body {
+            background-color: #050814;
+            font-family: 'Noto Sans SC', sans-serif;
+            color: #e2e8f0;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 20% 40%, rgba(0, 240, 255, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 80% 60%, rgba(255, 215, 0, 0.03) 0%, transparent 40%);
+        }
+
+        .font-sci-fi { font-family: 'Orbitron', sans-serif; }
+
+        .glass-panel {
+            background: rgba(11, 15, 25, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.05), inset 0 0 20px rgba(0, 240, 255, 0.02);
+        }
+
+        /* 赛道与进度条样式 */
+        .track {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(0, 240, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .bar {
+            height: 100%;
+            width: 0%;
+            transition: width 0.1s linear;
+            position: relative;
+        }
+
+        /* 不同的复杂度颜色发光效果 */
+        .bg-o1 { background: linear-gradient(90deg, #10b981, #34d399); box-shadow: 0 0 15px #10b981; }
+        .bg-ologn { background: linear-gradient(90deg, #3b82f6, #60a5fa); box-shadow: 0 0 15px #3b82f6; }
+        .bg-on { background: linear-gradient(90deg, #eab308, #facc15); box-shadow: 0 0 15px #eab308; }
+        .bg-on2 { background: linear-gradient(90deg, #ef4444, #f87171); box-shadow: 0 0 15px #ef4444; }
+
+        /* 内存块样式 (空间复杂度) */
+        .memory-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            align-content: flex-start;
+        }
+        
+        .mem-block {
+            width: 14px;
+            height: 14px;
+            background-color: rgba(0, 240, 255, 0.2);
+            border: 1px solid rgba(0, 240, 255, 0.5);
+            border-radius: 2px;
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        .mem-block.active {
+            background-color: #00F0FF;
+            box-shadow: 0 0 8px #00F0FF;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.5); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* 选项卡按钮 */
+        .tab-btn {
+            position: relative;
+            transition: all 0.3s;
+        }
+        .tab-btn.active {
+            color: #00F0FF;
+            text-shadow: 0 0 8px rgba(0, 240, 255, 0.8);
+        }
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: #00F0FF;
+            box-shadow: 0 0 10px #00F0FF;
+        }
+
+        /* 滑块定制 */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: rgba(0, 240, 255, 0.2);
+            height: 6px;
+            border-radius: 3px;
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #00F0FF;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.8);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-6 md:p-10 pt-20 md:pt-10">
+
+    <!-- 🚀 返回主菜单按钮 (悬浮左上角) 🚀 -->
+    <a href="index.html" class="fixed top-4 left-4 md:top-6 md:left-6 z-50 flex items-center gap-2 px-3 py-2 md:px-4 md:py-2 rounded border border-cyan-500/30 bg-black/60 backdrop-blur-md text-cyan-500/70 hover:text-cyan-300 hover:border-cyan-400 hover:shadow-[0_0_15px_rgba(0,240,255,0.4)] transition-all font-sci-fi text-xs md:text-sm group text-decoration-none">
+        <svg class="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        <span class="hidden md:inline tracking-wider">MAIN TERMINAL</span>
+    </a>
+
+    <!-- 顶部标题 -->
+    <div class="text-center mb-8 w-full max-w-5xl mt-6 md:mt-0">
+        <h1 class="text-3xl md:text-4xl font-sci-fi font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 mb-2 drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
+            理论计算模块：数据量(N)与系统负载
+        </h1>
+        <p class="text-cyan-400/70 text-sm tracking-widest font-sci-fi">ALGORITHM COMPLEXITY VISUALIZER</p>
+    </div>
+
+    <!-- 主容器 -->
+    <div class="glass-panel rounded-2xl w-full max-w-5xl flex flex-col overflow-hidden">
+        
+        <!-- 导航 Tab -->
+        <div class="flex border-b border-cyan-500/20 bg-black/20">
+            <button onclick="switchTab('time')" id="tab-time" class="tab-btn active flex-1 py-4 font-sci-fi font-bold text-gray-400 hover:text-cyan-200 tracking-wider">
+                TIME COMPLEXITY (时间竞速)
+            </button>
+            <button onclick="switchTab('space')" id="tab-space" class="tab-btn flex-1 py-4 font-sci-fi font-bold text-gray-400 hover:text-cyan-200 tracking-wider border-l border-cyan-500/20">
+                SPACE COMPLEXITY (内存映射)
+            </button>
+        </div>
+
+        <!-- 全局控制面板 (N的滑块) -->
+        <div class="p-6 bg-cyan-900/10 border-b border-cyan-500/20 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div class="flex flex-col w-full md:w-1/2">
+                <label class="text-cyan-400 text-sm font-sci-fi mb-2 flex justify-between">
+                    <span>DATA SIZE (N) - 数据规模规模</span>
+                    <span id="n-display" class="font-bold text-yellow-400 text-lg drop-shadow-[0_0_5px_rgba(255,215,0,0.8)]">N = 10</span>
+                </label>
+                <input type="range" id="n-slider" min="1" max="100" value="10" class="w-full">
+                <p class="text-xs text-gray-500 mt-2">* 拖动滑块改变 N，观察系统负载的非线性爆发。</p>
+            </div>
+            
+            <button id="btn-run" class="px-8 py-3 rounded border-2 border-cyan-400 text-cyan-400 font-sci-fi font-bold text-lg bg-cyan-900/30 hover:bg-cyan-400 hover:text-gray-900 hover:shadow-[0_0_20px_rgba(0,240,255,0.6)] transition-all">
+                EXECUTE (执行演算)
+            </button>
+        </div>
+
+        <!-- 内容区：时间复杂度 (Time) -->
+        <div id="content-time" class="p-6 md:p-8 flex flex-col gap-6">
+            <!-- O(1) -->
+            <div class="flex flex-col">
+                <div class="flex justify-between items-end mb-1">
+                    <span class="font-sci-fi text-emerald-400 text-xl">O(1) - 常数阶</span>
+                    <span id="time-val-o1" class="font-sci-fi text-xs text-gray-400">0.00ms</span>
+                </div>
+                <div class="track h-6 w-full">
+                    <div id="bar-o1" class="bar bg-o1"></div>
+                </div>
+                <p class="text-xs text-emerald-500/60 mt-1">例如：数组下标访问。无论 N 多大，耗时恒定。</p>
+            </div>
+
+            <!-- O(log N) -->
+            <div class="flex flex-col">
+                <div class="flex justify-between items-end mb-1">
+                    <span class="font-sci-fi text-blue-400 text-xl">O(log N) - 对数阶</span>
+                    <span id="time-val-ologn" class="font-sci-fi text-xs text-gray-400">0.00ms</span>
+                </div>
+                <div class="track h-6 w-full">
+                    <div id="bar-ologn" class="bar bg-ologn"></div>
+                </div>
+                <p class="text-xs text-blue-500/60 mt-1">例如：二分查找。N 翻倍，耗时仅增加一个单位。</p>
+            </div>
+
+            <!-- O(N) -->
+            <div class="flex flex-col">
+                <div class="flex justify-between items-end mb-1">
+                    <span class="font-sci-fi text-yellow-400 text-xl">O(N) - 线性阶</span>
+                    <span id="time-val-on" class="font-sci-fi text-xs text-gray-400">0.00ms</span>
+                </div>
+                <div class="track h-6 w-full">
+                    <div id="bar-on" class="bar bg-on"></div>
+                </div>
+                <p class="text-xs text-yellow-500/60 mt-1">例如：单层 for 循环。耗时与 N 成正比。</p>
+            </div>
+
+            <!-- O(N^2) -->
+            <div class="flex flex-col">
+                <div class="flex justify-between items-end mb-1">
+                    <span class="font-sci-fi text-red-400 text-xl">O(N²) - 平方阶</span>
+                    <span id="time-val-on2" class="font-sci-fi text-xs text-gray-400">0.00ms</span>
+                </div>
+                <div class="track h-6 w-full">
+                    <div id="bar-on2" class="bar bg-on2"></div>
+                </div>
+                <p class="text-xs text-red-500/60 mt-1">例如：双层嵌套循环。N 增加 10 倍，耗时暴涨 100 倍！</p>
+            </div>
+        </div>
+
+        <!-- 内容区：空间复杂度 (Space) -->
+        <div id="content-space" class="p-6 md:p-8 flex-col gap-8 hidden">
+            <div class="flex flex-col md:flex-row gap-8 h-64">
+                <!-- O(1) Space -->
+                <div class="flex-1 flex flex-col">
+                    <div class="mb-2 border-b border-cyan-500/30 pb-2">
+                        <span class="font-sci-fi text-emerald-400 text-xl">O(1) 空间占用</span>
+                        <p class="text-xs text-gray-400 mt-1">无论数据规模如何，内存始终维持恒定占用。</p>
+                    </div>
+                    <div class="memory-grid h-full p-2 bg-black/30 border border-emerald-500/20 rounded" id="mem-o1"></div>
+                </div>
+
+                <!-- O(N) Space -->
+                <div class="flex-1 flex flex-col">
+                    <div class="mb-2 border-b border-cyan-500/30 pb-2">
+                        <span class="font-sci-fi text-yellow-400 text-xl">O(N) 空间占用</span>
+                        <p class="text-xs text-gray-400 mt-1">内存消耗随着数据规模 N 的增加而线性增长。</p>
+                    </div>
+                    <div class="memory-grid h-full p-2 bg-black/30 border border-yellow-500/20 rounded overflow-y-auto" id="mem-on"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const nSlider = document.getElementById('n-slider');
+        const nDisplay = document.getElementById('n-display');
+        const btnRun = document.getElementById('btn-run');
+        
+        let currentN = 10;
+        let isAnimating = false;
+        let currentTab = 'time';
+
+        nSlider.addEventListener('input', (e) => {
+            currentN = parseInt(e.target.value);
+            nDisplay.innerText = `N = ${currentN}`;
+            if(currentTab === 'space') renderSpace();
+            else resetBars();
+        });
+
+        function switchTab(tabName) {
+            currentTab = tabName;
+            document.getElementById('tab-time').classList.remove('active');
+            document.getElementById('tab-space').classList.remove('active');
+            document.getElementById('content-time').classList.add('hidden');
+            document.getElementById('content-space').classList.add('hidden');
+            document.getElementById('content-time').classList.remove('flex');
+            document.getElementById('content-space').classList.remove('flex');
+
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            document.getElementById(`content-${tabName}`).classList.remove('hidden');
+            document.getElementById(`content-${tabName}`).classList.add('flex');
+
+            if(tabName === 'space') {
+                renderSpace();
+                btnRun.classList.add('hidden');
+            } else {
+                resetBars();
+                btnRun.classList.remove('hidden');
+            }
+        }
+
+        function resetBars() {
+            ['o1', 'ologn', 'on', 'on2'].forEach(id => {
+                document.getElementById(`bar-${id}`).style.width = '0%';
+                document.getElementById(`time-val-${id}`).innerText = '0.00ms';
+            });
+        }
+
+        btnRun.addEventListener('click', () => {
+            if(isAnimating) return;
+            isAnimating = true;
+            resetBars();
+
+            const maxN2 = 100 * 100; 
+            const maxAnimTime = 3000;
+            
+            const timeO1 = 50; 
+            const timeOlogN = Math.max(100, Math.log2(currentN) / Math.log2(100) * 400); 
+            const timeON = (currentN / 100) * 1000; 
+            const timeON2 = (currentN * currentN / maxN2) * maxAnimTime;
+
+            animateBar('o1', timeO1);
+            animateBar('ologn', timeOlogN);
+            animateBar('on', timeON);
+            animateBar('on2', timeON2);
+            
+            setTimeout(() => { isAnimating = false; }, Math.max(timeO1, timeOlogN, timeON, timeON2) + 100);
+        });
+
+        function animateBar(id, targetTime) {
+            const bar = document.getElementById(`bar-${id}`);
+            const text = document.getElementById(`time-val-${id}`);
+            let startTime = null;
+
+            function step(timestamp) {
+                if (!startTime) startTime = timestamp;
+                const progress = timestamp - startTime;
+                
+                let percent = Math.min((progress / targetTime) * 100, 100);
+                bar.style.width = percent + '%';
+                
+                let displayTime = 0;
+                if(id === 'o1') displayTime = 1;
+                else if(id === 'ologn') displayTime = Math.log2(currentN).toFixed(2);
+                else if(id === 'on') displayTime = (currentN).toFixed(2);
+                else if(id === 'on2') displayTime = (currentN * currentN).toFixed(2);
+                
+                text.innerText = (displayTime * (percent/100)).toFixed(2) + ' units';
+
+                if (progress < targetTime) window.requestAnimationFrame(step);
+                else {
+                    text.innerText = displayTime + ' units'; 
+                    if(id === 'on2' && currentN > 50) text.innerText += " (CRITICAL!)";
+                }
+            }
+            window.requestAnimationFrame(step);
+        }
+
+        function renderSpace() {
+            const contO1 = document.getElementById('mem-o1');
+            const contON = document.getElementById('mem-on');
+            
+            contO1.innerHTML = ''; contON.innerHTML = '';
+
+            for(let i=0; i<3; i++) {
+                let div = document.createElement('div');
+                div.className = 'mem-block active';
+                contO1.appendChild(div);
+            }
+
+            let renderCount = currentN;
+            for(let i=0; i<renderCount; i++) {
+                let div = document.createElement('div');
+                div.className = 'mem-block active';
+                div.style.animationDelay = `${(i * 0.01)}s`; 
+                contON.appendChild(div);
+            }
+        }
+    </script>
+</body>
+</html>

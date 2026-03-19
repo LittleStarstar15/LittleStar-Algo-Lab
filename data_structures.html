@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星华大学：数据收容单元 (数据结构)</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Google Fonts 科幻字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* 宇宙深空黑背景 */
+        body {
+            background-color: #03050a;
+            font-family: 'Noto Sans SC', sans-serif;
+            color: #e2e8f0;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 15% 30%, rgba(0, 240, 255, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 85% 70%, rgba(217, 70, 239, 0.05) 0%, transparent 50%);
+        }
+
+        .font-sci-fi { font-family: 'Orbitron', sans-serif; }
+
+        .glass-panel {
+            background: rgba(11, 15, 25, 0.6);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.05), inset 0 0 20px rgba(0, 240, 255, 0.02);
+        }
+
+        /* 侧边栏菜单按钮 */
+        .ds-menu-btn {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 16px; border-radius: 8px;
+            background: rgba(0,0,0,0.4); border: 1px solid rgba(0,240,255,0.1);
+            color: rgba(255,255,255,0.6); font-family: 'Orbitron', sans-serif; transition: all 0.3s ease;
+            cursor: pointer; position: relative; overflow: hidden;
+        }
+        .ds-menu-btn:hover { background: rgba(0,240,255,0.1); color: #00F0FF; }
+        .ds-menu-btn.active {
+            background: rgba(0,240,255,0.2); border-color: #00F0FF;
+            color: #00F0FF; box-shadow: 0 0 15px rgba(0,240,255,0.3); font-weight: bold;
+        }
+        .ds-menu-btn.active::before {
+            content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: #00F0FF; box-shadow: 0 0 10px #00F0FF;
+        }
+
+        /* 数据节点基础样式 (能量块) */
+        .data-node {
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(10, 15, 25, 0.8); border: 1px solid rgba(0, 240, 255, 0.5);
+            color: #00F0FF; font-family: 'Orbitron', sans-serif; font-weight: bold;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.2), inset 0 0 10px rgba(0, 240, 255, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative;
+        }
+        .data-node.highlight {
+            background: rgba(0, 240, 255, 0.3); border-color: #FFF; color: #FFF;
+            box-shadow: 0 0 20px #00F0FF, inset 0 0 20px rgba(0, 240, 255, 0.5); transform: scale(1.1); z-index: 10;
+        }
+        
+        /* 特定数据结构样式 */
+        /* 1. 数组 */
+        .array-container { display: flex; gap: 2px; padding: 10px; background: rgba(0,0,0,0.5); border-radius: 4px; border: 1px dashed rgba(255,255,255,0.2); }
+        .array-node { width: 50px; height: 50px; border-radius: 2px; }
+        .array-index { position: absolute; bottom: -20px; font-size: 10px; color: gray; font-family: monospace; }
+        
+        /* 2. 链表 */
+        .ll-container { display: flex; align-items: center; gap: 40px; }
+        .ll-node { width: 60px; height: 40px; border-radius: 20px; border-color: #d946ef; color: #d946ef; box-shadow: 0 0 10px rgba(217, 70, 239, 0.2); }
+        .ll-node.highlight { background: rgba(217, 70, 239, 0.3); border-color: #FFF; box-shadow: 0 0 20px #d946ef; }
+        .ll-arrow { position: absolute; right: -35px; color: rgba(217, 70, 239, 0.6); font-weight: bold; font-family: monospace; font-size: 20px;}
+        
+        /* 3. 栈 (Stack) */
+        .stack-container { display: flex; flex-direction: column-reverse; align-items: center; gap: 4px; width: 100px; padding: 10px; border: 2px solid rgba(255, 215, 0, 0.3); border-top: none; border-radius: 0 0 8px 8px; background: linear-gradient(to top, rgba(255, 215, 0, 0.05), transparent); min-height: 250px;}
+        .stack-node { width: 80px; height: 30px; border-radius: 4px; border-color: #FFD700; color: #FFD700; box-shadow: 0 0 10px rgba(255, 215, 0, 0.2); animation: dropIn 0.3s ease-out; }
+        .stack-node.highlight { background: rgba(255, 215, 0, 0.3); border-color: #FFF; box-shadow: 0 0 20px #FFD700; }
+        
+        /* 4. 队列 (Queue) */
+        .queue-container { display: flex; align-items: center; gap: 4px; padding: 10px; border-top: 2px solid rgba(16, 185, 129, 0.3); border-bottom: 2px solid rgba(16, 185, 129, 0.3); background: linear-gradient(to right, rgba(16, 185, 129, 0.05), transparent); min-width: 300px; height: 80px;}
+        .queue-node { width: 40px; height: 40px; border-radius: 50%; border-color: #10b981; color: #10b981; box-shadow: 0 0 10px rgba(16, 185, 129, 0.2); animation: slideIn 0.3s ease-out; }
+        .queue-node.highlight { background: rgba(16, 185, 129, 0.3); border-color: #FFF; box-shadow: 0 0 20px #10b981; }
+
+        /* 动画 */
+        @keyframes dropIn { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes slideIn { from { transform: translateX(50px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes popOut { to { transform: translateY(-50px) scale(1.2); opacity: 0; } }
+        @keyframes dequeueOut { to { transform: translateX(-50px) scale(1.2); opacity: 0; } }
+
+        /* SVG 连线层 */
+        .svg-lines { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+        line { stroke: rgba(0, 240, 255, 0.3); stroke-width: 2; transition: all 0.3s; }
+        line.active { stroke: #00F0FF; stroke-width: 3; filter: drop-shadow(0 0 5px #00F0FF); }
+
+        button { transition: all 0.2s; }
+        button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 0 15px rgba(0, 240, 255, 0.4); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+        
+        .fade-enter { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4 md:p-6 pt-16 md:pt-6">
+
+    <!-- 🚀 返回主菜单按钮 -->
+    <a href="index.html" class="fixed top-4 left-4 md:top-6 md:left-6 z-50 flex items-center gap-2 px-3 py-2 md:px-4 md:py-2 rounded border border-cyan-500/30 bg-black/60 backdrop-blur-md text-cyan-500/70 hover:text-cyan-300 hover:border-cyan-400 hover:shadow-[0_0_15px_rgba(0,240,255,0.4)] transition-all font-sci-fi text-xs md:text-sm group text-decoration-none">
+        <svg class="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        <span class="hidden md:inline tracking-wider">MAIN TERMINAL</span>
+    </a>
+
+    <!-- 顶部标题 -->
+    <div class="text-center mb-8 mt-4 md:mt-0 w-full">
+        <h1 class="text-3xl md:text-4xl font-sci-fi font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 mb-2 drop-shadow-[0_0_8px_rgba(0,240,255,0.5)]">
+            星际数据收容单元：什么是数据结构？
+        </h1>
+        <p class="text-cyan-400/60 text-sm tracking-widest font-sci-fi">DATA STRUCTURES: THE CONTAINMENT & ORGANIZATION OF CHAOS</p>
+    </div>
+
+    <!-- 概念解析区 (图解替代) -->
+    <div class="w-full max-w-6xl glass-panel rounded-2xl p-6 md:p-8 mb-8 flex flex-col md:flex-row gap-8 items-center border-l-4 border-l-cyan-400">
+        <div class="flex-1">
+            <h2 class="text-xl font-bold text-white mb-3">如果算法是引擎，数据结构就是<span class="text-cyan-400">油箱与传送带</span>。</h2>
+            <p class="text-gray-400 text-sm leading-relaxed mb-4">
+                宇宙中充满了杂乱无章的原始数据（Chaos）。如果我们随便把它们堆在一起，AI 处理时就会像在大海捞针。<br>
+                <strong class="text-gray-200">数据结构（Data Structure）</strong> 就是我们为了高效利用数据，而设计的各种“收容容器”。有的像排队买票（队列），有的像叠盘子（栈），有的像家谱图（树）。
+            </p>
+        </div>
+        <div class="w-full md:w-1/3 flex items-center justify-center p-4 bg-black/40 rounded-xl border border-gray-800">
+            <div class="text-center">
+                <div class="font-sci-fi text-cyan-500 text-2xl mb-1">PROGRAM =</div>
+                <div class="font-sci-fi text-white font-bold text-lg">ALGORITHM + DATA STRUCTURE</div>
+                <div class="text-xs text-gray-500 mt-2">程序 = 算法 + 数据结构 (Niklaus Wirth, 1976)</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 交互式教具主区 -->
+    <div class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-4 gap-6">
+        
+        <!-- 左侧：数据结构导航菜单 -->
+        <div class="flex flex-col gap-3">
+            <div class="text-[10px] text-cyan-500/70 font-sci-fi mb-1 pl-1">SELECT CONTAINMENT MODULE</div>
+            
+            <button class="ds-menu-btn active" onclick="switchDS('array', this)">
+                <span>[01] ARRAY (数组)</span><span class="text-xs opacity-50">■■■■</span>
+            </button>
+            <button class="ds-menu-btn" onclick="switchDS('linkedlist', this)">
+                <span>[02] LINKED LIST (链表)</span><span class="text-xs opacity-50">●→●</span>
+            </button>
+            <button class="ds-menu-btn" onclick="switchDS('stack', this)">
+                <span>[03] STACK (栈)</span><span class="text-xs opacity-50">⚀⚁⚂</span>
+            </button>
+            <button class="ds-menu-btn" onclick="switchDS('queue', this)">
+                <span>[04] QUEUE (队列)</span><span class="text-xs opacity-50">←○○←</span>
+            </button>
+            <button class="ds-menu-btn" onclick="switchDS('tree', this)">
+                <span>[05] TREE (树)</span><span class="text-xs opacity-50">⑂</span>
+            </button>
+            <button class="ds-menu-btn" onclick="switchDS('graph', this)">
+                <span>[06] GRAPH (图)</span><span class="text-xs opacity-50">⎈</span>
+            </button>
+        </div>
+
+        <!-- 右侧：全息投影展示区 -->
+        <div class="lg:col-span-3 glass-panel rounded-2xl flex flex-col overflow-hidden">
+            
+            <!-- 头部信息 -->
+            <div class="bg-black/40 border-b border-cyan-500/20 p-5 flex justify-between items-start">
+                <div>
+                    <h2 id="ds-title" class="text-2xl font-bold text-cyan-300 font-sci-fi mb-1">ARRAY (数组)</h2>
+                    <p id="ds-desc" class="text-sm text-gray-400">内存中连续分配的能量方块。查找极快，但插入和删除困难。</p>
+                </div>
+                <div id="ds-badges" class="flex gap-2">
+                    <!-- 动态徽章 -->
+                </div>
+            </div>
+
+            <!-- 核心交互区 -->
+            <div class="flex-1 min-h-[350px] relative flex flex-col items-center justify-center p-8 overflow-hidden bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-cyan-900/10 via-black to-black">
+                
+                <!-- SVG 层 (用于树和图的连线) -->
+                <svg id="svg-layer" class="svg-lines"></svg>
+                
+                <!-- 容器 (动态注入节点) -->
+                <div id="ds-container" class="relative z-10 fade-enter">
+                    <!-- 动态内容 -->
+                </div>
+
+            </div>
+
+            <!-- 底部操作控制台 -->
+            <div class="bg-black/60 border-t border-cyan-500/20 p-4 flex gap-3 justify-center items-center h-20" id="ds-controls">
+                <!-- 动态控制按钮 -->
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- 数据结构元信息配置 ---
+        const dsInfo = {
+            array: {
+                title: 'ARRAY (数组)',
+                desc: '内存中【连续分配】的能量方块。通过下标查找瞬间完成 (O(1))，但中间插入新元素会导致后面所有元素被迫搬家 (O(N))。',
+                badges: ['<span class="px-2 py-1 bg-emerald-900/40 border border-emerald-500 text-emerald-400 text-[10px] rounded">查找 O(1)</span>', '<span class="px-2 py-1 bg-red-900/40 border border-red-500 text-red-400 text-[10px] rounded">插入 O(N)</span>']
+            },
+            linkedlist: {
+                title: 'LINKED LIST (链表)',
+                desc: '散落在宇宙各处的能量舱，通过【激光指针】(Next) 依次相连。插入只需改变指针方向 (O(1))，但找人只能从头顺藤摸瓜 (O(N))。',
+                badges: ['<span class="px-2 py-1 bg-red-900/40 border border-red-500 text-red-400 text-[10px] rounded">查找 O(N)</span>', '<span class="px-2 py-1 bg-emerald-900/40 border border-emerald-500 text-emerald-400 text-[10px] rounded">插入 O(1)*</span>']
+            },
+            stack: {
+                title: 'STACK (栈)',
+                desc: '一口垂直的能量井。【后进先出 LIFO】(Last In, First Out)。就像洗盘子，最后放上去的盘子最先被拿走。常用于撤销(Undo)操作和函数调用。',
+                badges: ['<span class="px-2 py-1 bg-yellow-900/40 border border-yellow-500 text-yellow-400 text-[10px] rounded">LIFO 规则</span>', '<span class="px-2 py-1 bg-emerald-900/40 border border-emerald-500 text-emerald-400 text-[10px] rounded">出入 O(1)</span>']
+            },
+            queue: {
+                title: 'QUEUE (队列)',
+                desc: '一条单向传送带。【先进先出 FIFO】(First In, First Out)。就像在星际餐厅排队，先来的先打饭。常用于任务排队、广度优先搜索。',
+                badges: ['<span class="px-2 py-1 bg-emerald-900/40 border border-emerald-500 text-emerald-400 text-[10px] rounded">FIFO 规则</span>', '<span class="px-2 py-1 bg-emerald-900/40 border border-emerald-500 text-emerald-400 text-[10px] rounded">出入 O(1)</span>']
+            },
+            tree: {
+                title: 'TREE (树)',
+                desc: '分层级的能量网络（以二叉树为例）。像公司的组织架构，也像族谱。优秀的树（如平衡二叉搜索树）能将查找时间压缩到 O(logN)。',
+                badges: ['<span class="px-2 py-1 bg-blue-900/40 border border-blue-500 text-blue-400 text-[10px] rounded">层级结构</span>', '<span class="px-2 py-1 bg-blue-900/40 border border-blue-500 text-blue-400 text-[10px] rounded">非线性</span>']
+            },
+            graph: {
+                title: 'GRAPH (图)',
+                desc: '错综复杂的星际航线网。由节点(Vertex)和边(Edge)组成。万物互联的终极形态，常用于导航寻路、社交网络推荐。',
+                badges: ['<span class="px-2 py-1 bg-fuchsia-900/40 border border-fuchsia-500 text-fuchsia-400 text-[10px] rounded">多对多网络</span>', '<span class="px-2 py-1 bg-fuchsia-900/40 border border-fuchsia-500 text-fuchsia-400 text-[10px] rounded">最复杂状态</span>']
+            }
+        };
+
+        // DOM 引用
+        const ui = {
+            title: document.getElementById('ds-title'),
+            desc: document.getElementById('ds-desc'),
+            badges: document.getElementById('ds-badges'),
+            container: document.getElementById('ds-container'),
+            controls: document.getElementById('ds-controls'),
+            svgLayer: document.getElementById('svg-layer')
+        };
+
+        // 状态变量
+        let currentType = 'array';
+        let items = [];
+        let isAnimating = false;
+
+        // --- 核心切换逻辑 ---
+        function switchDS(type, btnEl) {
+            if(isAnimating) return;
+            if(currentType === type && items.length > 0) return;
+            currentType = type;
+            
+            // 更新侧边栏 UI
+            document.querySelectorAll('.ds-menu-btn').forEach(btn => btn.classList.remove('active'));
+            if(btnEl) btnEl.classList.add('active');
+            
+            // 更新头部信息
+            ui.title.innerText = dsInfo[type].title;
+            ui.desc.innerHTML = dsInfo[type].desc;
+            ui.badges.innerHTML = dsInfo[type].badges.join('');
+
+            // 重置容器和 SVG
+            ui.container.innerHTML = '';
+            ui.container.className = 'relative z-10 fade-enter';
+            ui.svgLayer.innerHTML = '';
+            ui.controls.innerHTML = '';
+            items = [];
+
+            // 路由到具体的渲染函数
+            if(type === 'array') renderArray();
+            else if(type === 'linkedlist') renderLinkedList();
+            else if(type === 'stack') renderStack();
+            else if(type === 'queue') renderQueue();
+            else if(type === 'tree') renderTree();
+            else if(type === 'graph') renderGraph();
+        }
+
+        const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+        // --- 1. ARRAY 逻辑 ---
+        function renderArray() {
+            ui.container.innerHTML = `<div class="array-container" id="arr-box"></div>`;
+            const box = document.getElementById('arr-box');
+            
+            for(let i=0; i<6; i++) {
+                items.push(Math.floor(Math.random() * 90) + 10);
+                box.innerHTML += `
+                    <div class="data-node array-node" id="arr-node-${i}">
+                        ${items[i]}
+                        <span class="array-index">[${i}]</span>
+                    </div>`;
+            }
+
+            ui.controls.innerHTML = `
+                <button onclick="accessArray()" class="px-6 py-2 rounded border border-cyan-400 bg-cyan-900/30 text-cyan-400 font-bold font-sci-fi">ACCESS (随机读取)</button>
+            `;
+        }
+
+        async function accessArray() {
+            if(isAnimating) return; isAnimating = true;
+            const idx = Math.floor(Math.random() * items.length);
+            document.querySelectorAll('.array-node').forEach(n => n.classList.remove('highlight'));
+            const node = document.getElementById(`arr-node-${idx}`);
+            node.classList.add('highlight');
+            await sleep(800);
+            node.classList.remove('highlight');
+            isAnimating = false;
+        }
+
+        // --- 2. LINKED LIST 逻辑 ---
+        function renderLinkedList() {
+            ui.container.innerHTML = `<div class="ll-container" id="ll-box"></div>`;
+            const box = document.getElementById('ll-box');
+            
+            for(let i=0; i<4; i++) {
+                items.push(Math.floor(Math.random() * 90) + 10);
+                box.innerHTML += `
+                    <div class="data-node ll-node" id="ll-node-${i}">
+                        ${items[i]}
+                        ${i < 3 ? '<div class="ll-arrow">→</div>' : ''}
+                    </div>`;
+            }
+
+            ui.controls.innerHTML = `
+                <button onclick="traverseLL()" class="px-6 py-2 rounded border border-fuchsia-400 bg-fuchsia-900/30 text-fuchsia-400 font-bold font-sci-fi">TRAVERSE (顺序遍历)</button>
+            `;
+        }
+
+        async function traverseLL() {
+            if(isAnimating) return; isAnimating = true;
+            for(let i=0; i<items.length; i++) {
+                const node = document.getElementById(`ll-node-${i}`);
+                node.classList.add('highlight');
+                await sleep(500);
+                node.classList.remove('highlight');
+            }
+            isAnimating = false;
+        }
+
+        // --- 3. STACK 逻辑 ---
+        function renderStack() {
+            ui.container.innerHTML = `<div class="stack-container" id="stack-box"></div>`;
+            ui.controls.innerHTML = `
+                <button onclick="pushStack()" class="px-6 py-2 rounded border border-yellow-400 bg-yellow-900/30 text-yellow-400 font-bold font-sci-fi">PUSH (压栈)</button>
+                <button onclick="popStack()" class="px-6 py-2 rounded border border-red-500 bg-red-900/30 text-red-400 font-bold font-sci-fi">POP (出栈)</button>
+            `;
+            // 预放两个
+            pushStack(); setTimeout(pushStack, 400);
+        }
+
+        async function pushStack() {
+            if(isAnimating || items.length >= 6) return; isAnimating = true;
+            const box = document.getElementById('stack-box');
+            const val = Math.floor(Math.random() * 90) + 10;
+            const id = items.length;
+            items.push(val);
+            
+            const node = document.createElement('div');
+            node.className = 'data-node stack-node highlight';
+            node.id = `stack-node-${id}`;
+            node.innerText = val;
+            box.appendChild(node);
+            
+            await sleep(300);
+            node.classList.remove('highlight');
+            isAnimating = false;
+        }
+
+        async function popStack() {
+            if(isAnimating || items.length === 0) return; isAnimating = true;
+            const id = items.length - 1;
+            const node = document.getElementById(`stack-node-${id}`);
+            node.style.animation = 'popOut 0.3s forwards';
+            node.classList.add('highlight');
+            await sleep(300);
+            node.remove();
+            items.pop();
+            isAnimating = false;
+        }
+
+        // --- 4. QUEUE 逻辑 ---
+        function renderQueue() {
+            ui.container.innerHTML = `
+                <div class="text-[10px] text-gray-500 absolute -top-4 left-0 w-full flex justify-between px-10">
+                    <span>← 出队 (FRONT)</span><span>入队 (REAR) ←</span>
+                </div>
+                <div class="queue-container" id="queue-box"></div>
+            `;
+            ui.controls.innerHTML = `
+                <button onclick="enqueue()" class="px-6 py-2 rounded border border-emerald-400 bg-emerald-900/30 text-emerald-400 font-bold font-sci-fi">ENQUEUE (入队)</button>
+                <button onclick="dequeue()" class="px-6 py-2 rounded border border-red-500 bg-red-900/30 text-red-400 font-bold font-sci-fi">DEQUEUE (出队)</button>
+            `;
+            enqueue(); setTimeout(enqueue, 400);
+        }
+
+        async function enqueue() {
+            if(isAnimating || items.length >= 6) return; isAnimating = true;
+            const box = document.getElementById('queue-box');
+            const val = Math.floor(Math.random() * 90) + 10;
+            const id = Date.now(); // 用时间戳防止 id 冲突
+            items.push({id, val});
+            
+            const node = document.createElement('div');
+            node.className = 'data-node queue-node highlight';
+            node.id = `q-node-${id}`;
+            node.innerText = val;
+            box.appendChild(node); // 加到右边
+            
+            await sleep(300);
+            node.classList.remove('highlight');
+            isAnimating = false;
+        }
+
+        async function dequeue() {
+            if(isAnimating || items.length === 0) return; isAnimating = true;
+            const item = items.shift(); // 移除第一个
+            const node = document.getElementById(`q-node-${item.id}`);
+            node.style.animation = 'dequeueOut 0.3s forwards';
+            node.classList.add('highlight');
+            await sleep(300);
+            node.remove();
+            isAnimating = false;
+        }
+
+        // --- 5. TREE 逻辑 (使用绝对定位和 SVG 连线) ---
+        function renderTree() {
+            ui.container.innerHTML = `<div id="tree-box" style="width: 300px; height: 200px; position: relative;"></div>`;
+            const box = document.getElementById('tree-box');
+            // 硬编码二叉树位置
+            const treeNodes = [
+                {id: 0, val: 50, x: 135, y: 10,  p: null}, // 根
+                {id: 1, val: 30, x: 60,  y: 80,  p: 0},    // 左子
+                {id: 2, val: 70, x: 210, y: 80,  p: 0},    // 右子
+                {id: 3, val: 20, x: 20,  y: 150, p: 1},    // 左左
+                {id: 4, val: 40, x: 100, y: 150, p: 1},    // 左右
+                {id: 5, val: 80, x: 250, y: 150, p: 2}     // 右右
+            ];
+            items = treeNodes;
+
+            let svgHTML = '';
+            treeNodes.forEach(n => {
+                // 画节点
+                box.innerHTML += `<div class="data-node rounded-full absolute border-blue-400 text-blue-400 font-bold" style="width: 30px; height: 30px; left: ${n.x}px; top: ${n.y}px;" id="tree-node-${n.id}">${n.val}</div>`;
+                // 画连线 (到父节点)
+                if(n.p !== null) {
+                    const p = treeNodes[n.p];
+                    // 加上容器中心偏移
+                    const ox = ui.container.offsetWidth/2 - 150;
+                    const oy = ui.container.offsetHeight/2 - 100;
+                    svgHTML += `<line id="tree-line-${n.id}" x1="${n.x+15+ox}" y1="${n.y+15+oy}" x2="${p.x+15+ox}" y2="${p.y+15+oy}" stroke="rgba(0, 150, 255, 0.4)" />`;
+                }
+            });
+            ui.svgLayer.innerHTML = svgHTML;
+
+            ui.controls.innerHTML = `
+                <button onclick="traverseTree()" class="px-6 py-2 rounded border border-blue-400 bg-blue-900/30 text-blue-400 font-bold font-sci-fi">DFS (深度遍历)</button>
+            `;
+        }
+
+        async function traverseTree() {
+            if(isAnimating) return; isAnimating = true;
+            // 简单模拟前序遍历: 0, 1, 3, 4, 2, 5
+            const order = [0, 1, 3, 4, 2, 5];
+            for(let id of order) {
+                const node = document.getElementById(`tree-node-${id}`);
+                const line = document.getElementById(`tree-line-${id}`);
+                node.style.backgroundColor = 'rgba(0, 150, 255, 0.4)';
+                node.style.borderColor = '#FFF';
+                node.style.color = '#FFF';
+                node.style.boxShadow = '0 0 20px #00a8ff';
+                if(line) line.classList.add('active');
+                
+                await sleep(400);
+                
+                node.style.backgroundColor = '';
+                node.style.borderColor = '';
+                node.style.color = '';
+                node.style.boxShadow = '';
+                if(line) line.classList.remove('active');
+            }
+            isAnimating = false;
+        }
+
+        // --- 6. GRAPH 逻辑 ---
+        function renderGraph() {
+            ui.container.innerHTML = `<div id="graph-box" style="width: 300px; height: 200px; position: relative;"></div>`;
+            const box = document.getElementById('graph-box');
+            // 随便散落的几个点
+            const graphNodes = [
+                {id: 0, x: 150, y: 100}, // 中心
+                {id: 1, x: 50,  y: 30},
+                {id: 2, x: 250, y: 40},
+                {id: 3, x: 80,  y: 160},
+                {id: 4, x: 220, y: 170}
+            ];
+            // 复杂的连线
+            const edges = [
+                [0,1], [0,2], [0,3], [0,4], [1,3], [2,4]
+            ];
+            items = graphNodes;
+
+            let svgHTML = '';
+            // 画线
+            const ox = ui.container.offsetWidth/2 - 150;
+            const oy = ui.container.offsetHeight/2 - 100;
+            edges.forEach((e, i) => {
+                const n1 = graphNodes[e[0]]; const n2 = graphNodes[e[1]];
+                svgHTML += `<line id="graph-edge-${i}" x1="${n1.x+15+ox}" y1="${n1.y+15+oy}" x2="${n2.x+15+ox}" y2="${n2.y+15+oy}" stroke="rgba(217, 70, 239, 0.2)" />`;
+            });
+            ui.svgLayer.innerHTML = svgHTML;
+
+            // 画节点
+            graphNodes.forEach(n => {
+                box.innerHTML += `<div class="data-node rounded-full absolute border-fuchsia-400 text-fuchsia-400 font-bold" style="width: 30px; height: 30px; left: ${n.x}px; top: ${n.y}px;" id="graph-node-${n.id}">${String.fromCharCode(65+n.id)}</div>`;
+            });
+
+            ui.controls.innerHTML = `
+                <button onclick="pingGraph()" class="px-6 py-2 rounded border border-fuchsia-400 bg-fuchsia-900/30 text-fuchsia-400 font-bold font-sci-fi">BROADCAST (网络广播)</button>
+            `;
+        }
+
+        async function pingGraph() {
+            if(isAnimating) return; isAnimating = true;
+            // 从中心节点 0 向外广播
+            const center = document.getElementById('graph-node-0');
+            center.style.backgroundColor = 'rgba(217, 70, 239, 0.6)';
+            center.style.boxShadow = '0 0 30px #d946ef';
+            await sleep(300);
+
+            // 激活所有相邻的边和点
+            for(let i=0; i<4; i++) {
+                document.getElementById(`graph-edge-${i}`).classList.add('active');
+            }
+            await sleep(200);
+
+            for(let i=1; i<=4; i++) {
+                const n = document.getElementById(`graph-node-${i}`);
+                n.style.backgroundColor = 'rgba(217, 70, 239, 0.4)';
+                n.style.borderColor = '#FFF';
+            }
+            await sleep(600);
+
+            // 恢复
+            center.style.backgroundColor = ''; center.style.boxShadow = '';
+            for(let i=0; i<4; i++) document.getElementById(`graph-edge-${i}`).classList.remove('active');
+            for(let i=1; i<=4; i++) {
+                const n = document.getElementById(`graph-node-${i}`);
+                n.style.backgroundColor = ''; n.style.borderColor = '';
+            }
+            isAnimating = false;
+        }
+
+        // 初始化
+        window.onload = () => switchDS('array', document.querySelector('.ds-menu-btn'));
+        
+        // 窗口大小变化时重绘树和图的 SVG 连线（简单处理就是切回数组重置一下）
+        window.addEventListener('resize', () => {
+            if(currentType === 'tree' || currentType === 'graph') {
+                const old = currentType;
+                currentType = null;
+                switchDS(old, document.querySelector('.ds-menu-btn.active'));
+            }
+        });
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星华大学核心引擎：多维寻路模拟器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            background-color: #050814;
+            font-family: 'Noto Sans SC', sans-serif;
+            color: #e2e8f0;
+            overflow: hidden;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(0, 240, 255, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 85% 30%, rgba(255, 215, 0, 0.05) 0%, transparent 50%);
+        }
+
+        .font-sci-fi { font-family: 'Orbitron', sans-serif; }
+
+        .glass-panel {
+            background: rgba(11, 15, 25, 0.4);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.05), inset 0 0 20px rgba(0, 240, 255, 0.02);
+        }
+
+        #grid-container {
+            display: grid;
+            gap: 2px;
+            padding: 2px;
+            background-color: rgba(0, 240, 255, 0.1);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .node {
+            width: 26px;
+            height: 26px;
+            background-color: #1a1f2e;
+            border-radius: 4px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: crosshair;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            user-select: none;
+        }
+
+        .node:hover:not(.node-start):not(.node-end) {
+            background-color: #2a3143;
+            transform: scale(1.1);
+            z-index: 10;
+        }
+
+        .node-wall {
+            background-color: #02040a;
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            transform: scale(0.9);
+            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.8);
+        }
+
+        .node-exploring {
+            background-color: rgba(0, 240, 255, 0.9);
+            box-shadow: 0 0 10px #00F0FF, 0 0 20px rgba(0, 240, 255, 0.5);
+            border: 1px solid #FFF;
+            transform: scale(1.05);
+            z-index: 5;
+        }
+
+        .node-visited {
+            background-color: rgba(0, 240, 255, 0.15);
+            border: 1px solid rgba(0, 240, 255, 0.05);
+        }
+
+        .node-path {
+            background-color: #FFD700;
+            box-shadow: 0 0 15px #FFD700, 0 0 30px rgba(255, 215, 0, 0.6);
+            border: 1px solid #FFF;
+            transform: scale(1.15);
+            z-index: 10;
+            animation: pulse-glow 2s infinite;
+        }
+
+        .node-start, .node-end {
+            background-color: rgba(255, 255, 255, 0.1);
+            box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.2);
+            z-index: 20;
+            cursor: grab;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 15px #FFD700, 0 0 30px rgba(255, 215, 0, 0.4); }
+            50% { box-shadow: 0 0 25px #FFD700, 0 0 50px rgba(255, 215, 0, 0.8); }
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            background: rgba(0, 240, 255, 0.2);
+            height: 4px;
+            border-radius: 2px;
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #00F0FF;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.8);
+        }
+        
+        button { transition: all 0.2s ease; }
+        button:hover:not(:disabled) {
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+            transform: translateY(-1px);
+        }
+        button:active:not(:disabled) { transform: translateY(1px); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+        
+        .control-group {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(0, 240, 255, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- 🚀 返回主菜单按钮 (悬浮左上角) 🚀 -->
+    <a href="index.html" class="fixed top-4 left-4 md:top-6 md:left-6 z-50 flex items-center gap-2 px-3 py-2 md:px-4 md:py-2 rounded border border-cyan-500/30 bg-black/60 backdrop-blur-md text-cyan-500/70 hover:text-cyan-300 hover:border-cyan-400 hover:shadow-[0_0_15px_rgba(0,240,255,0.4)] transition-all font-sci-fi text-xs md:text-sm group text-decoration-none">
+        <svg class="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        <span class="hidden md:inline tracking-wider">MAIN TERMINAL</span>
+    </a>
+
+    <!-- 顶部标题 -->
+    <div class="text-center mb-6 mt-10 md:mt-4">
+        <h1 class="text-3xl md:text-4xl font-sci-fi font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 mb-2 drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
+            星华大学核心引擎：多维寻路模拟器
+        </h1>
+        <p class="text-cyan-400/70 text-sm tracking-widest font-sci-fi">ALGORITHM VISUALIZATION SYSTEM V2.0</p>
+    </div>
+
+    <!-- 主体演示区域 -->
+    <div class="glass-panel rounded-2xl p-6 flex flex-col items-center max-w-6xl w-full">
+        
+        <div class="w-full flex flex-wrap gap-4 justify-between items-center mb-4">
+            <div class="flex items-center space-x-4 control-group">
+                <div class="flex flex-col">
+                    <label class="text-[10px] text-cyan-500/70 mb-1 font-sci-fi">ENGINE CORE</label>
+                    <select id="algo-select" class="bg-transparent border border-cyan-500/30 text-cyan-300 font-sci-fi text-sm p-1 rounded outline-none focus:border-cyan-400">
+                        <option value="astar">A* (A-Star) 智能寻路</option>
+                        <option value="bfs">BFS (广度优先) 穷举扩散</option>
+                    </select>
+                </div>
+                <div class="w-px h-8 bg-cyan-500/20 mx-2"></div>
+                <div class="flex flex-col w-32">
+                    <label class="text-[10px] text-cyan-500/70 mb-1 font-sci-fi flex justify-between">
+                        <span>SPEED</span><span id="speed-display">FAST</span>
+                    </label>
+                    <input type="range" id="speed-slider" min="1" max="100" value="80" class="w-full">
+                </div>
+            </div>
+
+            <div class="flex space-x-3">
+                <button id="btn-start" class="px-5 py-2 rounded border border-cyan-400 text-cyan-400 font-sci-fi font-bold bg-cyan-900/30 hover:bg-cyan-400 hover:text-gray-900 flex items-center">
+                    <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
+                    AUTO RUN
+                </button>
+                <button id="btn-step" class="px-5 py-2 rounded border border-yellow-500/70 text-yellow-400 font-sci-fi bg-yellow-900/20 hover:bg-yellow-500 hover:text-gray-900 flex items-center">
+                    <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clip-rule="evenodd"></path></svg>
+                    STEP
+                </button>
+                <button id="btn-pause" class="hidden px-5 py-2 rounded border border-red-500/70 text-red-400 font-sci-fi bg-red-900/20 hover:bg-red-500 hover:text-gray-900 flex items-center">
+                    <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                    PAUSE
+                </button>
+                <button id="btn-clear-path" class="px-4 py-2 rounded border border-gray-600 text-gray-400 font-sci-fi text-sm bg-gray-800/50 hover:border-gray-400 hover:text-white">
+                    CLEAR PATH
+                </button>
+                <button id="btn-clear-all" class="px-4 py-2 rounded border border-gray-600 text-gray-400 font-sci-fi text-sm bg-gray-800/50 hover:border-red-400 hover:text-red-400">
+                    RESET ALL
+                </button>
+            </div>
+        </div>
+
+        <div class="w-full text-center text-xs text-cyan-200/50 mb-2 font-light">
+            [ 操作指南 ] 鼠标左键拖拽绘制暗物质屏障 | 拖拽 ✨起点 或 🌍终点 改变位置
+        </div>
+
+        <div id="grid-container" ondragstart="return false;" ondrop="return false;"></div>
+
+        <div class="w-full mt-6 grid grid-cols-3 gap-4 border-t border-cyan-500/20 pt-4">
+            <div class="flex flex-col items-center">
+                <span class="text-[10px] text-cyan-500/70 mb-1 font-sci-fi">SYSTEM STATUS</span>
+                <span id="stat-status" class="font-sci-fi text-xl text-cyan-300">AWAITING INPUT</span>
+            </div>
+            <div class="flex flex-col items-center border-l border-r border-cyan-500/20">
+                <span class="text-[10px] text-cyan-500/70 mb-1 font-sci-fi">NODES EXPLORED</span>
+                <span id="stat-nodes" class="font-sci-fi text-3xl font-bold text-cyan-400 drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">0</span>
+            </div>
+            <div class="flex flex-col items-center">
+                <span class="text-[10px] text-cyan-500/70 mb-1 font-sci-fi">PATH LENGTH</span>
+                <span id="stat-length" class="font-sci-fi text-3xl font-bold text-yellow-400 drop-shadow-[0_0_8px_rgba(255,215,0,0.6)]">0</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ROWS = 17; const COLS = 35;
+        let grid = [];
+        let startNode = { r: 8, c: 5 };
+        let endNode = { r: 8, c: 29 };
+        let isDrawingWall = false, isRemovingWall = false, isDraggingStart = false, isDraggingEnd = false;
+        
+        let algoState = { isRunning: false, isPaused: false, isFinished: false, openSet: [], closedSet: new Set(), steps: 0, nodesExplored: 0 };
+
+        const container = document.getElementById('grid-container');
+        const elements = {
+            nodes: document.getElementById('stat-nodes'), length: document.getElementById('stat-length'), status: document.getElementById('stat-status'),
+            btnStart: document.getElementById('btn-start'), btnStep: document.getElementById('btn-step'), btnPause: document.getElementById('btn-pause'),
+            btnClearPath: document.getElementById('btn-clear-path'), btnClearAll: document.getElementById('btn-clear-all'),
+            algoSelect: document.getElementById('algo-select'), speedSlider: document.getElementById('speed-slider'), speedDisplay: document.getElementById('speed-display')
+        };
+
+        function getDelay() { return Math.floor(200 * Math.pow((100 - elements.speedSlider.value) / 99, 2)); }
+
+        elements.speedSlider.addEventListener('input', (e) => {
+            const val = e.target.value;
+            if (val > 80) elements.speedDisplay.innerText = 'MAX';
+            else if (val > 40) elements.speedDisplay.innerText = 'NORMAL';
+            else elements.speedDisplay.innerText = 'SLOW';
+        });
+
+        function initGrid() {
+            container.innerHTML = ''; container.style.gridTemplateColumns = `repeat(${COLS}, minmax(0, 1fr))`; grid = [];
+            for (let r = 0; r < ROWS; r++) {
+                let row = [];
+                for (let c = 0; c < COLS; c++) {
+                    const nodeEl = document.createElement('div'); nodeEl.classList.add('node');
+                    let isStart = (r === startNode.r && c === startNode.c); let isEnd = (r === endNode.r && c === endNode.c);
+                    if (isStart) { nodeEl.innerHTML = '✨'; nodeEl.classList.add('node-start'); }
+                    if (isEnd) { nodeEl.innerHTML = '🌍'; nodeEl.classList.add('node-end'); }
+                    nodeEl.addEventListener('mousedown', (e) => handleMouseDown(r, c, e));
+                    nodeEl.addEventListener('mouseenter', () => handleMouseEnter(r, c));
+                    container.appendChild(nodeEl);
+                    row.push({ r, c, el: nodeEl, isWall: false, isStart, isEnd, g: Infinity, f: Infinity, parent: null });
+                }
+                grid.push(row);
+            }
+        }
+
+        function handleMouseDown(r, c, e) {
+            if (algoState.isRunning && !algoState.isPaused) return;
+            const node = grid[r][c];
+            if (node.isStart) { isDraggingStart = true; return; }
+            if (node.isEnd) { isDraggingEnd = true; return; }
+            if (e.buttons === 1) { if (node.isWall) isRemovingWall = true; else isDrawingWall = true; toggleWall(r, c); }
+        }
+
+        function handleMouseEnter(r, c) {
+            if (algoState.isRunning && !algoState.isPaused) return;
+            const node = grid[r][c];
+            if (isDraggingStart && !node.isEnd && !node.isWall) { moveSpecialNode(startNode, {r, c}, '✨', 'node-start'); startNode = {r, c}; }
+            else if (isDraggingEnd && !node.isStart && !node.isWall) { moveSpecialNode(endNode, {r, c}, '🌍', 'node-end'); endNode = {r, c}; }
+            else if (isDrawingWall && !node.isStart && !node.isEnd) setWall(r, c, true);
+            else if (isRemovingWall && !node.isStart && !node.isEnd) setWall(r, c, false);
+        }
+
+        window.addEventListener('mouseup', () => { isDrawingWall = isRemovingWall = isDraggingStart = isDraggingEnd = false; });
+
+        function moveSpecialNode(oldPos, newPos, icon, className) {
+            const oldNode = grid[oldPos.r][oldPos.c]; const newNode = grid[newPos.r][newPos.c];
+            oldNode.isStart = oldNode.isEnd = false; oldNode.el.innerHTML = ''; oldNode.el.classList.remove(className);
+            if (className === 'node-start') newNode.isStart = true; if (className === 'node-end') newNode.isEnd = true;
+            newNode.el.innerHTML = icon; newNode.el.classList.add(className);
+        }
+
+        function toggleWall(r, c) { setWall(r, c, !grid[r][c].isWall); }
+        function setWall(r, c, isWall) {
+            const node = grid[r][c]; node.isWall = isWall;
+            if (isWall) node.el.classList.add('node-wall'); else node.el.classList.remove('node-wall');
+        }
+
+        function heuristic(nodeA, nodeB) { return Math.abs(nodeA.r - nodeB.r) + Math.abs(nodeA.c - nodeB.c); }
+        function getNeighbors(node) {
+            const neighbors = []; const { r, c } = node;
+            if (r > 0) neighbors.push(grid[r-1][c]); if (c < COLS - 1) neighbors.push(grid[r][c+1]);
+            if (r < ROWS - 1) neighbors.push(grid[r+1][c]); if (c > 0) neighbors.push(grid[r][c-1]);
+            return neighbors;
+        }
+
+        function resetAlgoState(keepWalls = true) {
+            algoState = { isRunning: false, isPaused: false, isFinished: false, openSet: [], closedSet: new Set(), steps: 0, nodesExplored: 0 };
+            elements.nodes.innerText = '0'; elements.length.innerText = '0'; updateStatus('AWAITING INPUT', 'text-cyan-300');
+            elements.btnStart.classList.remove('hidden'); elements.btnPause.classList.add('hidden'); elements.btnStep.disabled = false; elements.algoSelect.disabled = false;
+            for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+                const node = grid[r][c]; node.g = node.f = Infinity; node.parent = null;
+                node.el.classList.remove('node-exploring', 'node-visited', 'node-path');
+                if (!keepWalls) setWall(r, c, false);
+            }
+        }
+
+        function updateStatus(text, colorClass) { elements.status.innerText = text; elements.status.className = `font-sci-fi text-xl ${colorClass}`; }
+
+        function setupAlgorithm() {
+            resetAlgoState(true); algoState.isRunning = true; elements.algoSelect.disabled = true;
+            let start = grid[startNode.r][startNode.c]; let end = grid[endNode.r][endNode.c]; start.g = 0;
+            if (elements.algoSelect.value === 'astar') start.f = heuristic(start, end); else start.f = 0;
+            algoState.openSet.push(start); updateStatus('CALCULATING...', 'text-cyan-400 animate-pulse');
+        }
+
+        function stepAlgorithm() {
+            if (algoState.isFinished || algoState.openSet.length === 0) {
+                if(!algoState.isFinished) updateStatus('NO PATH FOUND', 'text-red-500 drop-shadow-[0_0_5px_rgba(239,68,68,0.8)]');
+                algoState.isFinished = true; algoState.isRunning = false;
+                elements.btnStart.classList.remove('hidden'); elements.btnPause.classList.add('hidden'); elements.btnStep.disabled = true;
+                return false;
+            }
+            const algoType = elements.algoSelect.value; let currentIdx = 0;
+            if (algoType === 'astar') { for (let i = 1; i < algoState.openSet.length; i++) if (algoState.openSet[i].f < algoState.openSet[currentIdx].f) currentIdx = i; }
+            let current = algoState.openSet[currentIdx]; let end = grid[endNode.r][endNode.c];
+            if (current === end) { algoState.isFinished = true; drawPath(current); return false; }
+
+            algoState.openSet.splice(currentIdx, 1); algoState.closedSet.add(current);
+            if (!current.isStart && !current.isEnd) { current.el.classList.remove('node-exploring'); current.el.classList.add('node-visited'); }
+            algoState.nodesExplored++; elements.nodes.innerText = algoState.nodesExplored;
+
+            let neighbors = getNeighbors(current);
+            for (let neighbor of neighbors) {
+                if (neighbor.isWall || algoState.closedSet.has(neighbor)) continue;
+                let tentativeG = current.g + 1;
+                if (!algoState.openSet.includes(neighbor)) {
+                    algoState.openSet.push(neighbor); if (!neighbor.isEnd) neighbor.el.classList.add('node-exploring');
+                } else if (tentativeG >= neighbor.g) continue;
+                neighbor.parent = current; neighbor.g = tentativeG;
+                if (algoType === 'astar') neighbor.f = neighbor.g + heuristic(neighbor, end); else neighbor.f = neighbor.g;
+            }
+            return true;
+        }
+
+        async function runLoop() {
+            if (!algoState.isRunning || algoState.isPaused) return;
+            let stepsPerFrame = elements.speedSlider.value > 90 ? 5 : 1; let hasNext = true;
+            for(let i=0; i<stepsPerFrame; i++){ if(!algoState.isPaused) hasNext = stepAlgorithm(); if(!hasNext) break; }
+            if (hasNext && !algoState.isPaused) {
+                let delay = getDelay(); if (delay > 0) await new Promise(r => setTimeout(r, delay));
+                requestAnimationFrame(runLoop);
+            }
+        }
+
+        async function drawPath(node) {
+            updateStatus('PATH ESTABLISHED', 'text-yellow-400 drop-shadow-[0_0_8px_rgba(255,215,0,0.8)]');
+            let path = []; let current = node;
+            while (current.parent) { path.push(current.parent); current = current.parent; }
+            path.reverse(); elements.length.innerText = path.length;
+            for (let p of path) {
+                if (!p.isStart && !p.isEnd) {
+                    p.el.classList.remove('node-visited', 'node-exploring'); p.el.classList.add('node-path');
+                    await new Promise(r => setTimeout(r, 20));
+                }
+            }
+            algoState.isRunning = false; elements.btnStart.classList.remove('hidden'); elements.btnPause.classList.add('hidden'); elements.btnStep.disabled = true;
+        }
+
+        elements.btnStart.addEventListener('click', () => {
+            if (algoState.isFinished) resetAlgoState(true); if (!algoState.isRunning) setupAlgorithm();
+            algoState.isPaused = false; elements.btnStart.classList.add('hidden'); elements.btnPause.classList.remove('hidden'); runLoop();
+        });
+
+        elements.btnPause.addEventListener('click', () => {
+            algoState.isPaused = true; elements.btnStart.classList.remove('hidden'); elements.btnPause.classList.add('hidden'); updateStatus('SYSTEM PAUSED', 'text-yellow-500');
+        });
+
+        elements.btnStep.addEventListener('click', () => {
+            if (algoState.isFinished) resetAlgoState(true); if (!algoState.isRunning) setupAlgorithm();
+            algoState.isPaused = true; elements.btnStart.classList.remove('hidden'); elements.btnPause.classList.add('hidden');
+            stepAlgorithm(); if (!algoState.isFinished) updateStatus('STEPPING...', 'text-cyan-400');
+        });
+
+        elements.btnClearPath.addEventListener('click', () => resetAlgoState(true));
+        elements.btnClearAll.addEventListener('click', () => { resetAlgoState(false); initGrid(); });
+        elements.algoSelect.addEventListener('change', () => { if(algoState.isFinished) resetAlgoState(true); });
+
+        window.onload = initGrid;
+    </script>
+</body>
+</html>

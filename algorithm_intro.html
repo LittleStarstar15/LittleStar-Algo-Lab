@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星华大学：算法的本质</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Noto+Sans+SC:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            background-color: #050814;
+            font-family: 'Noto Sans SC', sans-serif;
+            color: #e2e8f0;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 50% 10%, rgba(0, 240, 255, 0.05) 0%, transparent 50%),
+                linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.8));
+        }
+
+        .font-sci-fi { font-family: 'Orbitron', sans-serif; }
+
+        .glass-panel {
+            background: rgba(11, 15, 25, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.05);
+        }
+
+        /* 规则代码块样式 */
+        .code-line {
+            padding: 8px 12px;
+            margin: 4px 0;
+            border-radius: 4px;
+            border-left: 3px solid transparent;
+            color: #64748b;
+            transition: all 0.2s ease;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        .code-line.active {
+            background: rgba(0, 240, 255, 0.15);
+            border-left-color: #00F0FF;
+            color: #00F0FF;
+            text-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
+            transform: translateX(5px);
+        }
+
+        /* 元素球样式 */
+        .orb {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 12px;
+            color: rgba(255,255,255,0.9);
+            box-shadow: 0 0 15px currentColor;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .orb-red { background: #ef4444; color: #ef4444; } /* 暗物质 */
+        .orb-blue { background: #3b82f6; color: #3b82f6; } /* 能量石 */
+
+        /* 区域容器 */
+        .zone {
+            min-height: 120px;
+            border: 1px dashed rgba(0, 240, 255, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-content: flex-start;
+            position: relative;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .scanner-beam {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(to bottom, transparent, rgba(0, 240, 255, 0.2) 50%, transparent);
+            transform: translateY(-100%);
+            animation: scan 2s infinite linear;
+            pointer-events: none;
+            display: none;
+        }
+
+        .zone.processing .scanner-beam { display: block; }
+
+        @keyframes scan {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+
+        /* 管道连接线 */
+        .pipeline {
+            height: 2px;
+            background: rgba(0, 240, 255, 0.2);
+            position: relative;
+            width: 100%;
+            margin: 20px 0;
+        }
+        
+        .pipeline::after {
+            content: '';
+            position: absolute;
+            top: -3px; left: 0;
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: #00F0FF;
+            box-shadow: 0 0 10px #00F0FF;
+            animation: flow 1.5s infinite linear;
+            display: none;
+        }
+        
+        .is-running .pipeline::after { display: block; }
+
+        @keyframes flow {
+            0% { left: 0; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { left: 100%; opacity: 0; }
+        }
+
+        /* 状态灯 */
+        .status-light {
+            width: 10px; height: 10px; border-radius: 50%;
+            background: #64748b;
+            box-shadow: 0 0 5px #64748b;
+        }
+        .status-light.active { background: #10b981; box-shadow: 0 0 15px #10b981; }
+
+        button { transition: all 0.2s; }
+        button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 0 15px rgba(0, 240, 255, 0.4); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4 md:p-8 pt-16 md:pt-8">
+
+    <!-- 🚀 返回主菜单按钮 (悬浮左上角) 🚀 -->
+    <a href="index.html" class="fixed top-4 left-4 md:top-6 md:left-6 z-50 flex items-center gap-2 px-3 py-2 md:px-4 md:py-2 rounded border border-cyan-500/30 bg-black/60 backdrop-blur-md text-cyan-500/70 hover:text-cyan-300 hover:border-cyan-400 hover:shadow-[0_0_15px_rgba(0,240,255,0.4)] transition-all font-sci-fi text-xs md:text-sm group text-decoration-none">
+        <svg class="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        <span class="hidden md:inline tracking-wider">MAIN TERMINAL</span>
+    </a>
+
+    <!-- 顶部标题 -->
+    <div class="text-center mb-8 w-full max-w-6xl mt-4 md:mt-0">
+        <h1 class="text-3xl md:text-4xl font-sci-fi font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 mb-2 drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
+            基础计算理论：什么是算法 (ALGORITHM)?
+        </h1>
+        <p class="text-cyan-400/70 text-sm tracking-widest font-sci-fi">THE ESSENCE: INPUT -> LOGIC RULES -> OUTPUT</p>
+    </div>
+
+    <!-- 主体加工厂界面 -->
+    <div class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- 左侧：输入区 (Input) -->
+        <div class="glass-panel rounded-xl p-6 flex flex-col">
+            <div class="flex justify-between items-center mb-4 border-b border-cyan-500/30 pb-2">
+                <h2 class="text-xl font-bold text-cyan-300 font-sci-fi">1. INPUT (输入)</h2>
+                <div class="text-xs text-gray-400 bg-black/40 px-2 py-1 rounded">宇宙混沌数据</div>
+            </div>
+            <p class="text-sm text-gray-400 mb-4 h-10">混合了【红色暗物质】与【蓝色能量石】的原始矿石池。</p>
+            
+            <div id="zone-input" class="zone flex-1"></div>
+            
+            <button id="btn-generate" class="mt-4 w-full py-2 rounded border border-cyan-500/50 text-cyan-400 text-sm hover:bg-cyan-900/30 font-sci-fi">
+                [ INIT RAW DATA ] 重新采集矿石
+            </button>
+        </div>
+
+        <!-- 中间：核心算法规则区 (The Algorithm) -->
+        <div class="glass-panel rounded-xl p-6 flex flex-col relative border-cyan-400/50 shadow-[0_0_20px_rgba(0,240,255,0.1)]">
+            <div class="absolute top-6 right-6 flex items-center gap-2">
+                <span class="text-[10px] text-gray-400 font-sci-fi" id="status-text">IDLE</span>
+                <div id="status-indicator" class="status-light"></div>
+            </div>
+
+            <div class="mb-4 border-b border-cyan-500/30 pb-2">
+                <h2 class="text-xl font-bold text-cyan-300 font-sci-fi">2. ALGORITHM (算法)</h2>
+                <div class="text-xs text-yellow-400/80 mt-1">处理这些数据的“指令说明书”</div>
+            </div>
+            
+            <!-- 加工扫描区 -->
+            <div class="w-full h-20 bg-black/50 border border-cyan-500/30 rounded flex items-center justify-center mb-4 relative overflow-hidden zone" id="zone-processing">
+                <div class="scanner-beam"></div>
+                <span class="text-cyan-500/30 text-xs absolute font-sci-fi">PROCESSING CORE</span>
+            </div>
+
+            <!-- 代码执行高亮区 -->
+            <div class="bg-black/60 rounded p-3 font-mono text-sm flex-1 border border-gray-800">
+                <div class="text-gray-500 mb-2 text-xs">// 提纯提炼算法 v1.0</div>
+                <div id="code-1" class="code-line">1. 从 INPUT 池中抓取 1 个矿石;</div>
+                <div id="code-2" class="code-line">2. IF (矿石 == <span class="text-red-400">红色暗物质</span>) {</div>
+                <div id="code-3" class="code-line pl-8">直接销毁 (Discard);</div>
+                <div id="code-4" class="code-line">3. } ELSE IF (矿石 == <span class="text-blue-400">蓝色能量石</span>) {</div>
+                <div id="code-5" class="code-line pl-8">输送至 OUTPUT 区;</div>
+                <div id="code-6" class="code-line">4. }</div>
+                <div id="code-7" class="code-line">5. IF (INPUT 池还有矿石) {</div>
+                <div id="code-8" class="code-line pl-8">跳转回步骤 1 (Loop);</div>
+                <div id="code-9" class="code-line">6. } ELSE { 结束加工; }</div>
+            </div>
+
+            <div class="flex gap-2 mt-4">
+                <button id="btn-run" class="flex-1 py-3 rounded border border-cyan-400 bg-cyan-900/40 text-cyan-300 font-bold hover:bg-cyan-500 hover:text-black font-sci-fi">
+                    EXECUTE (自动执行)
+                </button>
+                <button id="btn-step" class="flex-1 py-3 rounded border border-yellow-500/50 bg-yellow-900/20 text-yellow-400 font-bold hover:bg-yellow-500 hover:text-black font-sci-fi">
+                    STEP (单步解析)
+                </button>
+            </div>
+        </div>
+
+        <!-- 右侧：输出区 (Output) -->
+        <div class="glass-panel rounded-xl p-6 flex flex-col">
+            <div class="flex justify-between items-center mb-4 border-b border-cyan-500/30 pb-2">
+                <h2 class="text-xl font-bold text-cyan-300 font-sci-fi">3. OUTPUT (输出)</h2>
+                <div class="text-xs text-gray-400 bg-black/40 px-2 py-1 rounded">建立秩序</div>
+            </div>
+            <p class="text-sm text-gray-400 mb-4 h-10">算法处理完毕后，得到的纯净能量石阵列。</p>
+            
+            <div id="zone-output" class="zone flex-1 border-emerald-500/30 bg-emerald-900/10"></div>
+            
+            <div class="mt-4 w-full text-center text-xs text-gray-500 flex justify-between">
+                <span>暗物质销毁数: <span id="count-destroyed" class="text-red-400">0</span></span>
+                <span>成功提纯数: <span id="count-saved" class="text-blue-400">0</span></span>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- 逻辑与数据状态 ---
+        const zoneInput = document.getElementById('zone-input');
+        const zoneProcess = document.getElementById('zone-processing');
+        const zoneOutput = document.getElementById('zone-output');
+        
+        let rawData = [];
+        let isProcessing = false;
+        let currentItem = null;
+        let destroyedCount = 0;
+        let savedCount = 0;
+        
+        function generateData() {
+            if(isProcessing) return;
+            zoneInput.innerHTML = '';
+            zoneOutput.innerHTML = '';
+            zoneProcess.innerHTML = '<div class="scanner-beam"></div><span class="text-cyan-500/30 text-xs absolute font-sci-fi">PROCESSING CORE</span>';
+            rawData = [];
+            destroyedCount = 0;
+            savedCount = 0;
+            updateCounts();
+            resetCodeHighlight();
+            
+            for(let i=0; i<8; i++) {
+                const isRed = Math.random() > 0.5;
+                const orb = document.createElement('div');
+                orb.className = `orb ${isRed ? 'orb-red' : 'orb-blue'}`;
+                orb.dataset.type = isRed ? 'red' : 'blue';
+                orb.innerText = Math.floor(Math.random() * 99); 
+                zoneInput.appendChild(orb);
+                rawData.push(orb);
+            }
+        }
+
+        function highlightCode(lineNum) {
+            document.querySelectorAll('.code-line').forEach(el => el.classList.remove('active'));
+            if(lineNum) document.getElementById(`code-${lineNum}`).classList.add('active');
+        }
+
+        function updateCounts() {
+            document.getElementById('count-destroyed').innerText = destroyedCount;
+            document.getElementById('count-saved').innerText = savedCount;
+        }
+
+        function setStatus(isRunning) {
+            isProcessing = isRunning;
+            const indicator = document.getElementById('status-indicator');
+            const text = document.getElementById('status-text');
+            document.body.classList.toggle('is-running', isRunning);
+            
+            if(isRunning) {
+                indicator.classList.add('active');
+                text.innerText = 'PROCESSING';
+                text.className = 'text-[10px] text-emerald-400 font-sci-fi';
+                zoneProcess.classList.add('processing');
+                document.getElementById('btn-generate').disabled = true;
+            } else {
+                indicator.classList.remove('active');
+                text.innerText = 'IDLE';
+                text.className = 'text-[10px] text-gray-400 font-sci-fi';
+                zoneProcess.classList.remove('processing');
+                document.getElementById('btn-generate').disabled = false;
+                highlightCode(null);
+            }
+        }
+
+        const sleep = ms => new Promise(r => setTimeout(r, ms));
+        let stepState = 0; 
+        
+        async function executeNextStep() {
+            if (stepState === 0) {
+                if (zoneInput.children.length === 0) {
+                    highlightCode(9);
+                    setStatus(false);
+                    return false;
+                }
+                setStatus(true);
+                highlightCode(1);
+                currentItem = zoneInput.firstElementChild;
+                zoneProcess.appendChild(currentItem);
+                stepState = 2;
+                return true;
+            } 
+            else if (stepState === 2) {
+                highlightCode(2);
+                await sleep(400);
+                if (currentItem.dataset.type === 'red') stepState = 3;
+                else stepState = 4;
+                return true;
+            }
+            else if (stepState === 3) {
+                highlightCode(3);
+                currentItem.style.transform = 'scale(0)';
+                currentItem.style.opacity = '0';
+                await sleep(300);
+                currentItem.remove();
+                destroyedCount++;
+                updateCounts();
+                stepState = 6;
+                return true;
+            }
+            else if (stepState === 4) {
+                highlightCode(4);
+                await sleep(400);
+                stepState = 5;
+                return true;
+            }
+            else if (stepState === 5) {
+                highlightCode(5);
+                zoneOutput.appendChild(currentItem);
+                savedCount++;
+                updateCounts();
+                stepState = 6;
+                return true;
+            }
+            else if (stepState === 6) {
+                highlightCode(7);
+                await sleep(400);
+                if (zoneInput.children.length > 0) {
+                    highlightCode(8);
+                    stepState = 0;
+                } else {
+                    highlightCode(9);
+                    stepState = 0;
+                    setStatus(false);
+                }
+                return true;
+            }
+        }
+
+        async function runAuto() {
+            if (isProcessing && stepState === 0) return;
+            if (zoneInput.children.length === 0) generateData();
+            
+            document.getElementById('btn-step').disabled = true;
+            document.getElementById('btn-run').disabled = true;
+            
+            let hasNext = true;
+            while(hasNext) {
+                hasNext = await executeNextStep();
+                if(hasNext) await sleep(600);
+            }
+            
+            document.getElementById('btn-step').disabled = false;
+            document.getElementById('btn-run').disabled = false;
+        }
+
+        document.getElementById('btn-generate').addEventListener('click', generateData);
+        document.getElementById('btn-step').addEventListener('click', async () => {
+            document.getElementById('btn-run').disabled = true;
+            await executeNextStep();
+            if(!isProcessing) document.getElementById('btn-run').disabled = false;
+        });
+        document.getElementById('btn-run').addEventListener('click', runAuto);
+
+        function resetCodeHighlight() { highlightCode(null); stepState = 0; }
+
+        window.onload = generateData;
+    </script>
+</body>
+</html>

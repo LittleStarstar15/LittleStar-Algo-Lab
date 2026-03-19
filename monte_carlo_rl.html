@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星华大学：蒙特卡洛强化学习</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Google Fonts 科幻字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Noto+Sans+SC:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            background-color: #03050a;
+            font-family: 'Noto Sans SC', sans-serif;
+            color: #e2e8f0;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(217, 70, 239, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 80% 20%, rgba(0, 240, 255, 0.05) 0%, transparent 40%),
+                linear-gradient(to bottom, transparent, rgba(0,0,0,0.8));
+        }
+
+        .font-sci-fi { font-family: 'Orbitron', sans-serif; }
+
+        .glass-panel {
+            background: rgba(11, 15, 25, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(217, 70, 239, 0.3);
+            box-shadow: 0 0 30px rgba(217, 70, 239, 0.05);
+        }
+
+        /* 标签切换 */
+        .top-tab-btn { transition: all 0.3s ease; border-bottom: 2px solid transparent; white-space: nowrap; }
+        .top-tab-btn.active { color: #00F0FF; border-bottom-color: #00F0FF; text-shadow: 0 0 8px rgba(0, 240, 255, 0.6); font-weight: bold; }
+
+        .console-tab-btn { transition: all 0.3s ease; border-bottom: 2px solid transparent; white-space: nowrap; }
+        .console-tab-btn.active { color: #d946ef; border-bottom-color: #d946ef; text-shadow: 0 0 8px rgba(217, 70, 239, 0.6); font-weight: bold; }
+
+        /* 交互公式悬停 */
+        .term-hover { transition: all 0.3s; padding: 4px 12px; border-radius: 8px; border: 1px solid transparent; cursor: pointer; }
+        .term-hover:hover { background: rgba(255, 255, 255, 0.1); transform: scale(1.1); border-color: currentColor; box-shadow: 0 0 20px currentColor; }
+
+        /* 动画淡入 */
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* 🚀 全新网格世界架构 (5x5) */
+        #grid-board {
+            width: 100%; max-width: 400px; aspect-ratio: 1 / 1;
+            margin: 0 auto; position: relative;
+            /* 阻止浏览器默认触摸滚动和选中文本，保证拖拽画笔流畅 */
+            touch-action: none;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        #grid-cells-container {
+            display: grid; gap: 6px;
+            width: 100%; height: 100%; position: absolute; inset: 0; z-index: 0;
+        }
+
+        .grid-cell {
+            background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px; position: relative; display: flex; align-items: center; justify-content: center;
+            overflow: visible; transition: all 0.3s; cursor: crosshair; 
+            /* 防止 emoji 被拖拽 */
+            user-select: none; -webkit-user-drag: none; touch-action: none;
+        }
+
+        .cell-goal { background: rgba(16, 185, 129, 0.2); border-color: #10b981; box-shadow: 0 0 15px rgba(16, 185, 129, 0.3); }
+        .cell-trap { background: rgba(239, 68, 68, 0.2); border-color: #ef4444; box-shadow: inset 0 0 15px rgba(239, 68, 68, 0.3); }
+        
+        /* 墙壁样式 (暗物质) */
+        .cell-wall { 
+            background: repeating-linear-gradient(45deg, #0f172a, #0f172a 10px, #02040a 10px, #02040a 20px); 
+            border: 1px solid rgba(0, 0, 0, 0.8); 
+            box-shadow: inset 0 0 15px rgba(0,0,0,1); 
+        }
+
+        /* 画图工具按钮样式 */
+        .tool-btn { transition: all 0.2s; }
+        .tool-btn.active {
+            background: rgba(0, 240, 255, 0.2);
+            border-color: #00F0FF; color: #00F0FF;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
+        }
+        
+        .policy-arrow { font-size: 20px; font-weight: bold; color: rgba(255, 255, 255, 0.1); pointer-events: none; z-index: 10; }
+        .policy-arrow.learned { color: #d946ef; text-shadow: 0 0 10px #d946ef; }
+
+        /* SVG 光束轨迹连线 */
+        .trail-line {
+            stroke: rgba(0, 240, 255, 0.5); stroke-width: 3; stroke-linecap: round; fill: none; transition: all 0.3s ease-out;
+        }
+        .trail-line.backprop {
+            stroke: rgba(217, 70, 239, 0.9); stroke-width: 5; filter: drop-shadow(0 0 6px rgba(217, 70, 239, 0.8));
+        }
+
+        /* 爆炸粒子特效 */
+        .explosion-particle {
+            position: absolute; pointer-events: none; width: 6px; height: 6px;
+            background: #ef4444; border-radius: 50%; box-shadow: 0 0 10px #ef4444;
+            animation: explode-p 0.6s ease-out forwards; z-index: 60;
+        }
+        @keyframes explode-p {
+            0% { transform: scale(1) translate(0, 0); opacity: 1; }
+            100% { transform: scale(0) translate(var(--tx), var(--ty)); opacity: 0; }
+        }
+        .explosion-ring {
+            position: absolute; pointer-events: none; width: 40px; height: 40px;
+            border: 2px solid #ef4444; border-radius: 50%; z-index: 60;
+            animation: explode-ring 0.5s ease-out forwards;
+        }
+        @keyframes explode-ring {
+            0% { transform: scale(0.5); opacity: 1; border-width: 4px; }
+            100% { transform: scale(3); opacity: 0; border-width: 1px; }
+        }
+
+        /* 飞船 */
+        #agent {
+            position: absolute; 
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px; filter: drop-shadow(0 0 15px #00F0FF);
+            transition: all 0.15s ease-in-out; z-index: 50;
+            pointer-events: none; 
+        }
+
+        /* 经验波纹 */
+        .mc-wave {
+            position: absolute; width: 100%; height: 100%;
+            background: radial-gradient(circle, rgba(217, 70, 239, 0.9) 0%, transparent 70%);
+            border-radius: 50%; opacity: 0; transform: scale(0.5); pointer-events: none; z-index: 15;
+        }
+        @keyframes pulse-mc { 0% { opacity: 1; transform: scale(0.5); } 100% { opacity: 0; transform: scale(1.5); } }
+
+        /* 浮动文本 */
+        .floating-text {
+            position: absolute; font-family: 'Orbitron', monospace; font-size: 14px; font-weight: bold;
+            z-index: 60; pointer-events: none; animation: floatUp 1s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+        }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-40px); } }
+
+        /* 震屏 */
+        .board-shake { animation: shake-board 0.3s ease-in-out; }
+        @keyframes shake-board {
+            0%, 100% { transform: translate(0, 0); }
+            25% { transform: translate(-8px, 4px) rotate(-1deg); }
+            50% { transform: translate(8px, -4px) rotate(1deg); }
+        }
+
+        #phase-overlay {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-family: 'Orbitron', sans-serif; font-size: 1.5rem; font-weight: 900;
+            text-align: center; pointer-events: none; z-index: 100; opacity: 0;
+            background: rgba(0,0,0,0.85); padding: 10px 20px; border-radius: 8px; border: 1px solid;
+            transition: opacity 0.3s; white-space: nowrap;
+        }
+
+        /* 导学页推演盒 */
+        .intro-box {
+            width: 80px; height: 80px; border-radius: 8px; background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(0,240,255,0.3); display: flex; flex-direction: column;
+            align-items: center; justify-content: center; position: relative; transition: all 0.3s;
+        }
+        .intro-box.highlight-backprop { background: rgba(217, 70, 239, 0.4); border-color: #d946ef; box-shadow: 0 0 20px #d946ef; transform: scale(1.1); z-index: 10; }
+
+        input[type=range] { -webkit-appearance: none; width: 100%; background: rgba(0, 240, 255, 0.1); height: 4px; border-radius: 2px; outline: none; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #00F0FF; cursor: pointer; box-shadow: 0 0 10px #00F0FF; }
+        .slider-fuchsia::-webkit-slider-thumb { background: #d946ef; box-shadow: 0 0 10px #d946ef; }
+        .slider-yellow::-webkit-slider-thumb { background: #FFD700; box-shadow: 0 0 10px #FFD700; }
+        .math-board { background: rgba(0, 0, 0, 0.6); border: 1px dashed rgba(0, 240, 255, 0.3); border-radius: 8px; padding: 12px; font-family: 'Orbitron', monospace; }
+        .q-table { width: 100%; border-collapse: collapse; font-family: 'Orbitron', monospace; font-size: 10px; text-align: center; }
+        .q-table th, .q-table td { border: 1px solid rgba(255,255,255,0.1); padding: 4px; }
+        .q-table th { color: #00F0FF; background: rgba(0,240,255,0.1); }
+        .q-best { color: #d946ef !important; font-weight: bold; text-shadow: 0 0 5px #d946ef; }
+        .cyber-scroll::-webkit-scrollbar { width: 4px; }
+        .cyber-scroll::-webkit-scrollbar-thumb { background: rgba(217, 70, 239, 0.4); border-radius: 2px; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4 md:p-6 pt-16 md:pt-6">
+
+    <!-- 🚀 返回主菜单按钮 -->
+    <a href="index.html" class="fixed top-4 left-4 md:top-6 md:left-6 z-50 flex items-center justify-center gap-2 px-3 py-2 md:px-4 md:py-2 rounded border border-cyan-500/30 bg-black/60 backdrop-blur-md text-cyan-500/70 hover:text-cyan-300 hover:border-cyan-400 transition-all group text-decoration-none">
+        <svg class="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M10 19l-7-7m0 0l7-7m-7 7h18" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+        <span class="hidden md:inline font-sci-fi text-xs tracking-wider">MAIN TERMINAL</span>
+    </a>
+
+    <div class="text-center mb-6 w-full">
+        <h1 class="text-3xl md:text-4xl font-sci-fi font-bold text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-400 to-cyan-400 drop-shadow-[0_0_8px_rgba(217,70,239,0.5)]">
+            AI 训练所：蒙特卡洛强化学习
+        </h1>
+        <p class="text-fuchsia-400/60 text-sm tracking-widest font-sci-fi">EPISODIC LEARNING & BLACK HOLE CRASH SENSING</p>
+    </div>
+
+    <!-- 场景切换 -->
+    <div class="flex gap-4 md:gap-8 mb-6 border-b border-gray-800 w-full max-w-6xl px-4 pb-1">
+        <button id="tab-top-intro" class="top-tab-btn active pb-3 font-sci-fi text-gray-400" onclick="switchScenario('intro')">[MODULE 00] 核心法则</button>
+        <button id="tab-top-sim" class="top-tab-btn pb-3 font-sci-fi text-gray-400" onclick="switchScenario('sim')">[CASE 01] 星际探路者</button>
+    </div>
+
+    <!-- 视图 1：导学页 (理论与公式) -->
+    <div id="view-intro" class="w-full max-w-6xl flex flex-col gap-6 fade-in">
+        <div class="glass-panel rounded-2xl p-6 md:p-10 flex flex-col items-center border-t-4 border-cyan-400">
+            <h2 class="text-xl md:text-2xl font-bold mb-4">事后诸葛亮的智慧：<span class="text-cyan-400">倒推才是学习的本质</span></h2>
+            <p class="text-gray-400 text-sm text-center max-w-3xl mb-8">
+                蒙特卡洛（MC）算法在探索阶段只记录轨迹。只有当回合彻底终结（通关或坠毁），系统才会从终点倒推回起点，用结局带来的“震撼”更新每一处的经验记忆。
+            </p>
+
+            <div class="bg-black/50 border border-gray-800 rounded-xl p-8 w-full max-w-4xl relative shadow-[inset_0_0_30px_rgba(0,240,255,0.05)]">
+                <div class="flex flex-wrap justify-center items-center text-xl md:text-3xl font-sci-fi font-bold gap-4 select-none">
+                    <div class="term-hover text-cyan-400" onmouseover="showMCTerm('q')" onmouseout="showMCTerm('default')">Q(S, A)</div>
+                    <div class="text-gray-500">←</div>
+                    <div class="term-hover text-cyan-400">Q(S, A)</div>
+                    <div class="text-gray-500">+</div>
+                    <div class="term-hover text-emerald-400" onmouseover="showMCTerm('alpha')">α</div>
+                    <div class="text-gray-500">× [</div>
+                    <div class="term-hover text-fuchsia-400" onmouseover="showMCTerm('g')">G</div>
+                    <div class="text-gray-500">-</div>
+                    <div class="term-hover text-cyan-400">Q(S, A)</div>
+                    <div class="text-gray-500">]</div>
+                </div>
+                <div id="mc-term-explanation" class="min-h-[100px] mt-6 bg-cyan-900/20 border border-cyan-500/30 rounded-lg p-4 flex items-center justify-center text-center">
+                    <p class="text-gray-400 text-sm animate-pulse">👆 鼠标悬停在变量上查看解析。</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-panel rounded-2xl p-6 md:p-8 flex flex-col items-center">
+            <h3 class="text-xl font-bold text-fuchsia-300 font-sci-fi mb-4">单线推演：经验回溯流程</h3>
+            <div class="flex items-center gap-4 justify-center p-4 mb-6 overflow-x-auto w-full">
+                <div class="intro-box" id="intro-box-0"><span class="text-[10px] text-gray-500">START</span><span class="text-sm text-cyan-300">R: -1</span></div>
+                <div class="text-gray-600 font-bold" id="intro-arrow-0">▶</div>
+                <div class="intro-box" id="intro-box-1"><span class="text-[10px] text-gray-500">S₁</span><span class="text-sm text-cyan-300">R: -1</span></div>
+                <div class="text-gray-600 font-bold" id="intro-arrow-1">▶</div>
+                <div class="intro-box border-emerald-500" id="intro-box-2"><span class="text-[10px] text-emerald-500">GOAL</span><span class="text-lg text-yellow-400 font-bold">+10</span></div>
+            </div>
+            <div class="flex gap-4">
+                <button onclick="playIntroBackprop()" id="btn-intro-backprop" class="px-8 py-3 rounded-full border border-fuchsia-400 bg-fuchsia-900/30 text-fuchsia-400 font-bold font-sci-fi hover:bg-fuchsia-400 hover:text-black transition-all">🔄 演示经验倒推</button>
+                <button onclick="switchScenario('sim')" class="px-8 py-3 rounded-full border border-cyan-400 bg-cyan-900/30 text-cyan-400 font-bold font-sci-fi hover:bg-cyan-400 hover:text-black transition-all">进入实战模拟 →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 视图 2：实战模拟沙盘 -->
+    <div id="view-sim" class="w-full max-w-6xl grid-cols-1 lg:grid-cols-12 gap-6 hidden fade-in">
+        <div class="lg:col-span-7 glass-panel rounded-2xl p-6 flex flex-col items-center relative overflow-hidden">
+            <div class="w-full flex justify-between items-center mb-4">
+                <div class="text-[10px] text-fuchsia-500 font-sci-fi">CUSTOM ENVIRONMENT BUILDER (5x5 GRID)</div>
+                <div class="text-xs font-sci-fi text-gray-400">EPISODE: <span id="lbl-episode" class="text-white font-bold text-lg ml-2">0</span></div>
+            </div>
+            
+            <!-- 绘图工具栏 -->
+            <div class="flex gap-2 justify-center mb-6 w-full flex-wrap border-b border-cyan-500/20 pb-4">
+                <button id="tool-wall" class="tool-btn active px-3 py-1 rounded border border-gray-600 text-gray-400 text-[10px] font-sci-fi hover:text-white" onclick="setTool('wall')">🧱 墙壁/暗物质</button>
+                <button id="tool-trap" class="tool-btn px-3 py-1 rounded border border-gray-600 text-gray-400 text-[10px] font-sci-fi hover:text-red-400" onclick="setTool('trap')">🌌 陷阱</button>
+                <button id="tool-goal" class="tool-btn px-3 py-1 rounded border border-gray-600 text-gray-400 text-[10px] font-sci-fi hover:text-emerald-400" onclick="setTool('goal')">💎 终点大奖</button>
+                <button id="tool-start" class="tool-btn px-3 py-1 rounded border border-gray-600 text-gray-400 text-[10px] font-sci-fi hover:text-cyan-400" onclick="setTool('start')">🛸 放置飞船</button>
+                <button id="tool-erase" class="tool-btn px-3 py-1 rounded border border-gray-600 text-gray-400 text-[10px] font-sci-fi hover:text-white" onclick="setTool('erase')">🧹 橡皮擦</button>
+            </div>
+
+            <!-- 加入了防止拖拽的标记 -->
+            <div id="grid-board" ondragstart="return false;" ondrop="return false;">
+                <!-- SVG 光束轨迹层 -->
+                <svg id="trail-layer" class="absolute top-0 left-0 w-full h-full pointer-events-none z-10">
+                    <defs>
+                        <marker id="arrow-cyan" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                            <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(0, 240, 255, 0.8)" />
+                        </marker>
+                        <marker id="arrow-purple" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                            <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(217, 70, 239, 1)" />
+                        </marker>
+                    </defs>
+                    <g id="trail-lines"></g>
+                </svg>
+                
+                <!-- 遮罩与实体容器 -->
+                <div id="phase-overlay"></div>
+                <div id="agent">🛸</div>
+                <div id="grid-cells-container"></div>
+            </div>
+            
+            <div class="w-full mt-4 text-xs font-sci-fi text-center text-gray-500">
+                [ 鼠标在网格上涂抹拖拽，绘制属于你的独特探索迷宫 ]
+            </div>
+        </div>
+
+        <!-- 右侧控制台 -->
+        <div class="lg:col-span-5 glass-panel rounded-2xl p-6 flex flex-col">
+            <div class="flex gap-4 border-b border-gray-800 w-full mb-4 pb-1">
+                <button class="console-tab-btn active pb-2 font-sci-fi text-sm" onclick="switchConsoleTab('train', this)">[1] CONSOLE</button>
+                <button class="console-tab-btn pb-2 font-sci-fi text-sm" onclick="switchConsoleTab('qtable', this)">[2] Q-MATRIX</button>
+            </div>
+
+            <div id="view-train" class="flex flex-col flex-1">
+                <div class="math-board mb-4 h-32 overflow-y-auto cyber-scroll font-mono text-xs text-gray-400" id="console-log">> SYSTEM READY.</div>
+                
+                <div class="space-y-4 flex-1">
+                    <div>
+                        <div class="flex justify-between text-[10px] font-sci-fi mb-1"><span>探索率 ε</span><span id="val-eps" class="text-cyan-400">0.8</span></div>
+                        <input type="range" id="slider-eps" min="0" max="1" step="0.1" value="0.8">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[10px] font-sci-fi mb-1"><span>衰减率 γ</span><span id="val-gam" class="text-fuchsia-400">0.9</span></div>
+                        <input type="range" id="slider-gam" min="0" max="1" step="0.1" value="0.9" class="slider-fuchsia">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[10px] font-sci-fi mb-1"><span>仿真速度</span><span id="val-spd" class="text-yellow-400">1x</span></div>
+                        <input type="range" id="slider-spd" min="1" max="50" step="1" value="1" class="slider-yellow">
+                    </div>
+                </div>
+
+                <div class="flex gap-3 mt-6">
+                    <button id="btn-1-ep" onclick="runEpisode(false)" class="flex-1 py-3 rounded border border-cyan-500/50 bg-cyan-900/30 text-cyan-400 font-bold font-sci-fi hover:bg-cyan-900/80 transition-all">▶ 开始单局尝试</button>
+                    <button id="btn-100-ep" onclick="runFastTraining(50)" class="flex-1 py-3 rounded border border-fuchsia-500/50 bg-fuchsia-900/30 text-fuchsia-400 font-bold font-sci-fi hover:bg-fuchsia-900/80">⏭ 批量训练 50 回合</button>
+                </div>
+                
+                <div class="flex gap-3 mt-3">
+                    <button onclick="resetTraining()" class="flex-1 py-2 border border-gray-600 bg-black/40 text-gray-500 text-[10px] font-sci-fi hover:text-white transition-all">WIPE AI MEMORY (清空脑机)</button>
+                    <button onclick="clearMap()" class="flex-1 py-2 border border-gray-600 bg-black/40 text-gray-500 text-[10px] font-sci-fi hover:text-red-400 transition-all">CLEAR MAP (清空地图)</button>
+                </div>
+            </div>
+
+            <div id="view-qtable" class="flex flex-col flex-1 hidden">
+                <div class="overflow-y-auto cyber-scroll border border-gray-800 rounded flex-1"><table class="q-table" id="q-table-body"></table></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 🚀 核心逻辑配置 (5x5 矩阵) 🚀 ---
+        const GRID_SIZE = 5;
+        const STATE_COUNT = GRID_SIZE * GRID_SIZE; // 25 个格子
+        const ACTION_COUNT = 4;
+        const ARROWS = ['▲', '▶', '▼', '◀'];
+
+        // 默认趣味迷宫布局
+        let START_STATE = 0;
+        let GOAL_STATES = [24];
+        let TRAP_STATES = [12, 18];
+        let WALL_STATES = [7, 11, 13];
+
+        let Q = Array(STATE_COUNT).fill(0).map(() => Array(ACTION_COUNT).fill(0));
+        let episodeCount = 0;
+        let isTraining = false;
+        let currentState = START_STATE;
+        let gridInitialized = false;
+
+        // 画图工具状态
+        let currentTool = 'wall';
+        let isDrawing = false;
+
+        const board = document.getElementById('grid-board');
+        const cellsContainer = document.getElementById('grid-cells-container');
+        const trailLines = document.getElementById('trail-lines');
+        const agent = document.getElementById('agent');
+        const consoleLog = document.getElementById('console-log');
+        const epsSlider = document.getElementById('slider-eps');
+        const gamSlider = document.getElementById('slider-gam');
+        const spdSlider = document.getElementById('slider-spd');
+        const phaseOverlay = document.getElementById('phase-overlay');
+
+        // --- 造物主工具切换 ---
+        function setTool(tool) {
+            currentTool = tool;
+            document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`tool-${tool}`).classList.add('active');
+        }
+
+        // --- 画布涂抹与场景实时构建核心 ---
+        function applyTool(idx) {
+            if(isTraining) return;
+
+            // 保护起点不被意外完全擦除
+            if (idx === START_STATE && currentTool !== 'start') return; 
+
+            // 判断状态是否真正发生改变，防止过度重绘清除记忆
+            let changed = false;
+
+            if (currentTool === 'wall' && !WALL_STATES.includes(idx)) changed = true;
+            else if (currentTool === 'trap' && !TRAP_STATES.includes(idx)) changed = true;
+            else if (currentTool === 'goal' && !GOAL_STATES.includes(idx)) changed = true;
+            else if (currentTool === 'start' && START_STATE !== idx) changed = true;
+            else if (currentTool === 'erase' && (WALL_STATES.includes(idx) || TRAP_STATES.includes(idx) || GOAL_STATES.includes(idx))) changed = true;
+
+            if (!changed) return;
+
+            // 清理旧特征
+            GOAL_STATES = GOAL_STATES.filter(s => s !== idx);
+            TRAP_STATES = TRAP_STATES.filter(s => s !== idx);
+            WALL_STATES = WALL_STATES.filter(s => s !== idx);
+
+            // 赋予新特征
+            if (currentTool === 'wall') WALL_STATES.push(idx);
+            else if (currentTool === 'trap') TRAP_STATES.push(idx);
+            else if (currentTool === 'goal') GOAL_STATES.push(idx);
+            else if (currentTool === 'start') START_STATE = idx;
+
+            // 环境已经改变，清空 AI 记忆重新开始
+            resetTraining(false); 
+        }
+
+        function clearMap() {
+            if(isTraining) return;
+            WALL_STATES = [];
+            TRAP_STATES = [];
+            GOAL_STATES = [];
+            applyTool(START_STATE); // 触发刷新和记忆重置
+            addLog('MAP DESTROYED AND MEMORIES CLEARED.', 'text-red-400 font-bold');
+        }
+
+        // --- 系统与界面切换 ---
+        function switchScenario(scene) {
+            document.querySelectorAll('.top-tab-btn').forEach(btn => btn.classList.toggle('active', btn.id === `tab-top-${scene}`));
+            document.getElementById('view-intro').classList.toggle('hidden', scene !== 'intro');
+            document.getElementById('view-sim').classList.toggle('hidden', scene !== 'sim');
+            if (scene === 'sim') {
+                document.getElementById('view-sim').classList.add('grid');
+                if(!gridInitialized) { initGrid(); gridInitialized = true; }
+            }
+        }
+
+        const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+        function addLog(msg, color='text-gray-400') {
+            const div = document.createElement('div');
+            div.className = color;
+            div.innerHTML = `> ${msg}`;
+            consoleLog.appendChild(div);
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+        }
+
+        // 爆炸特效
+        function triggerExplosion(stateIndex) {
+            const cell = document.getElementById(`cell-${stateIndex}`);
+            const ring = document.createElement('div');
+            ring.className = 'explosion-ring';
+            cell.appendChild(ring);
+
+            for (let i = 0; i < 12; i++) {
+                const p = document.createElement('div');
+                p.className = 'explosion-particle';
+                const angle = (i / 12) * Math.PI * 2;
+                const dist = 30 + Math.random() * 40;
+                p.style.setProperty('--tx', `${Math.cos(angle) * dist}px`);
+                p.style.setProperty('--ty', `${Math.sin(angle) * dist}px`);
+                cell.appendChild(p);
+                setTimeout(() => p.remove(), 600);
+            }
+            setTimeout(() => ring.remove(), 500);
+        }
+
+        async function showPhaseDisplay(text, color, borderColor) {
+            phaseOverlay.innerHTML = text.replace('\n', '<br>');
+            phaseOverlay.style.color = color;
+            phaseOverlay.style.borderColor = borderColor;
+            phaseOverlay.style.opacity = '1';
+            await sleep(1200);
+            phaseOverlay.style.opacity = '0';
+        }
+
+        // 飞船自适应位移
+        function updateAgentVisual() {
+            const cell = document.getElementById(`cell-${currentState}`);
+            if(!cell) return;
+            agent.style.left = `${cell.offsetLeft}px`;
+            agent.style.top = `${cell.offsetTop}px`;
+            agent.style.width = `${cell.offsetWidth}px`;
+            agent.style.height = `${cell.offsetHeight}px`;
+        }
+
+        function resetAgentInstantly() {
+            agent.style.transition = 'none';
+            updateAgentVisual();
+            void agent.offsetWidth; 
+            agent.style.transition = 'all 0.15s ease-in-out';
+        }
+
+        // 🚀 构建全新 DOM 环境 (接入现代 Pointer 拖拽事件)
+        function initGrid() {
+            cellsContainer.innerHTML = '';
+            cellsContainer.style.gridTemplateColumns = `repeat(${GRID_SIZE}, 1fr)`;
+            trailLines.innerHTML = '';
+            
+            for (let i = 0; i < STATE_COUNT; i++) {
+                const cell = document.createElement('div');
+                cell.id = `cell-${i}`;
+                cell.className = 'grid-cell';
+
+                // 防止浏览器默认的拖拽行为
+                cell.ondragstart = () => false;
+
+                // 使用现代 Pointer Event 处理点击和滑动绘制 (兼容PC与手机)
+                cell.addEventListener('pointerdown', (e) => { 
+                    e.preventDefault(); 
+                    if(!isTraining) { isDrawing = true; applyTool(i); } 
+                });
+                
+                cell.addEventListener('pointerenter', (e) => { 
+                    if(isDrawing && !isTraining) applyTool(i); 
+                });
+                
+                cellsContainer.appendChild(cell);
+            }
+            
+            updateGridVisuals();
+            resetAgentInstantly();
+        }
+
+        // 全局拦截鼠标松开，停止绘画
+        window.addEventListener('pointerup', () => { isDrawing = false; });
+        window.addEventListener('pointercancel', () => { isDrawing = false; });
+
+        // 根据数组特征刷新格子 UI
+        function updateGridVisuals() {
+            for (let i = 0; i < STATE_COUNT; i++) {
+                const cell = document.getElementById(`cell-${i}`);
+                cell.className = 'grid-cell';
+                cell.innerHTML = '';
+                
+                if (i === START_STATE) {
+                    cell.classList.add('cell-start');
+                } else if (GOAL_STATES.includes(i)) {
+                    cell.classList.add('cell-goal');
+                    cell.innerHTML = '💎';
+                } else if (TRAP_STATES.includes(i)) {
+                    cell.classList.add('cell-trap');
+                    cell.innerHTML = '🌌';
+                } else if (WALL_STATES.includes(i)) {
+                    cell.classList.add('cell-wall');
+                } else {
+                    cell.innerHTML = `<span class="policy-arrow" id="policy-${i}">●</span>`;
+                }
+            }
+            updatePolicyArrows();
+            renderQTable();
+        }
+
+        // 计算 SVG 连线中心坐标
+        function getCellCenter(stateIdx) {
+            const cell = document.getElementById(`cell-${stateIdx}`);
+            const cx = cell.offsetLeft + cell.offsetWidth / 2;
+            const cy = cell.offsetTop + cell.offsetHeight / 2;
+            
+            // 微小偏移制造手绘感
+            const ox = (Math.random() - 0.5) * (cell.offsetWidth * 0.4);
+            const oy = (Math.random() - 0.5) * (cell.offsetHeight * 0.4);
+            
+            return { x: cx + ox, y: cy + oy };
+        }
+
+        // --- 核心算法物理引擎 ---
+        function stepEnv(state, action) {
+            let x = state % GRID_SIZE; 
+            let y = Math.floor(state / GRID_SIZE);
+            let nx = x, ny = y;
+            
+            if (action === 0 && y > 0) ny--; 
+            else if (action === 1 && x < GRID_SIZE - 1) nx++;
+            else if (action === 2 && y < GRID_SIZE - 1) ny++; 
+            else if (action === 3 && x > 0) nx--;
+            
+            let ns = ny * GRID_SIZE + nx;
+            
+            // 撞墙判定：退回原处
+            if (WALL_STATES.includes(ns)) {
+                ns = state;
+            }
+            
+            let r = -0.1; let d = false;
+            if (GOAL_STATES.includes(ns)) { r = 10; d = true; } 
+            else if (TRAP_STATES.includes(ns)) { r = -10; d = true; }
+            
+            return { nextState: ns, reward: r, done: d };
+        }
+
+        async function runEpisode(isFastMode = false) {
+            if(isTraining && !isFastMode) return;
+            if(!isFastMode) isTraining = true;
+
+            const eps = parseFloat(epsSlider.value);
+            const gam = parseFloat(gamSlider.value);
+            const speed = parseInt(spdSlider.value);
+            const moveDelay = isFastMode ? 2 : Math.max(200 / speed, 20);
+            const learnDelay = isFastMode ? 1 : Math.max(180 / speed, 15);
+
+            currentState = START_STATE; 
+            agent.innerHTML = '🛸'; agent.style.opacity = '1';
+            agent.style.transform = 'scale(1)'; agent.style.filter = 'drop-shadow(0 0 15px #00F0FF)';
+            updateAgentVisual();
+            
+            trailLines.innerHTML = ''; 
+            
+            if(!isFastMode) {
+                addLog(`EPISODE ${episodeCount + 1} 开始探索...`, 'text-cyan-400');
+                await showPhaseDisplay("PHASE 1: 前向探索\n(盲目摸索并画出航线)", "#00F0FF", "rgba(0,240,255,0.4)");
+            }
+
+            let trajectory = []; let svgPathLines = []; let done = false; let steps = 0;
+            let currentPos = getCellCenter(currentState);
+
+            while (!done && steps < 50) {
+                const action = (Math.random() < eps) ? Math.floor(Math.random() * 4) : Q[currentState].indexOf(Math.max(...Q[currentState]));
+                const prevS = currentState;
+                
+                const result = stepEnv(currentState, action);
+                const ns = result.nextState;
+
+                if(!isFastMode) {
+                    const nextPos = getCellCenter(ns);
+                    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                    line.setAttribute("x1", currentPos.x);
+                    line.setAttribute("y1", currentPos.y);
+                    line.setAttribute("x2", nextPos.x);
+                    line.setAttribute("y2", nextPos.y);
+                    line.setAttribute("class", "trail-line");
+                    trailLines.appendChild(line);
+                    svgPathLines.push(line);
+                    
+                    currentPos = nextPos;
+                }
+
+                trajectory.push({ state: prevS, action: action, reward: result.reward });
+                currentState = ns; steps++;
+                done = result.done;
+                
+                if(!isFastMode) { updateAgentVisual(); await sleep(moveDelay); }
+            }
+
+            // 结局播报
+            if(!isFastMode) {
+                updateAgentVisual();
+                if(GOAL_STATES.includes(currentState)) {
+                    addLog('🛸 MISSION COMPLETE! +10', 'text-emerald-400');
+                    agent.innerHTML = '✨'; agent.style.transform = 'scale(1.5)'; agent.style.filter = 'drop-shadow(0 0 30px #10b981)';
+                } else if (TRAP_STATES.includes(currentState)) {
+                    addLog('💥 MISSION FAILED! -10', 'text-red-400');
+                    agent.style.opacity = '0'; 
+                    triggerExplosion(currentState);
+                    board.classList.add('board-shake'); 
+                    setTimeout(() => board.classList.remove('board-shake'), 300);
+                }
+                await sleep(500);
+                await showPhaseDisplay("PHASE 2: 经验回溯\n(逆向倒推，吞噬航线)", "#d946ef", "rgba(217,70,239,0.4)");
+            }
+
+            // 阶段 2：回溯算法
+            let G = 0;
+            for (let t = trajectory.length - 1; t >= 0; t--) {
+                const step = trajectory[t];
+                G = step.reward + gam * G;
+                Q[step.state][step.action] += 0.1 * (G - Q[step.state][step.action]);
+                
+                if(!isFastMode) {
+                    if(svgPathLines[t]) {
+                        const line = svgPathLines[t];
+                        line.setAttribute("class", "trail-line backprop");
+                        setTimeout(() => line.remove(), 800);
+                    }
+
+                    const cell = document.getElementById(`cell-${step.state}`);
+                    const wave = document.createElement('div'); wave.className = 'mc-wave';
+                    cell.appendChild(wave); wave.style.animation = `pulse-mc 0.8s forwards`;
+                    setTimeout(()=>wave.remove(), 800);
+                    
+                    const float = document.createElement('div'); float.className = 'floating-text'; float.innerText = `G=${G.toFixed(1)}`;
+                    float.style.color = G > 0 ? '#10b981' : '#ef4444'; 
+                    cell.appendChild(float); setTimeout(()=>float.remove(), 1000);
+                    await sleep(learnDelay);
+                }
+            }
+
+            episodeCount++; document.getElementById('lbl-episode').innerText = episodeCount;
+            updatePolicyArrows(); renderQTable();
+            if(!isFastMode) isTraining = false;
+        }
+
+        async function runFastTraining(n) {
+            if(isTraining) return; isTraining = true;
+            addLog(`🚀 启动极速全息训练: ${n} EPISODES...`, 'text-yellow-400');
+            for(let i=0; i<n; i++) { await runEpisode(true); if(i%15===0) await sleep(5); }
+            addLog(`✅ 训练序列已完成。`, 'text-emerald-400'); isTraining = false;
+        }
+
+        // 清空脑机记忆
+        function resetTraining(isVisualOnly = true) {
+            if (isTraining) return;
+            Q = Array(STATE_COUNT).fill(0).map(() => Array(ACTION_COUNT).fill(0));
+            episodeCount = 0; 
+            document.getElementById('lbl-episode').innerText = '0';
+            trailLines.innerHTML = '';
+            currentState = START_STATE; 
+            
+            updateGridVisuals();
+            resetAgentInstantly();
+            
+            if (isVisualOnly) addLog('MEMORIES PURGED. Brain reset.', 'text-white font-bold');
+        }
+
+        function updatePolicyArrows() {
+            for (let i = 0; i < STATE_COUNT; i++) {
+                if (GOAL_STATES.includes(i) || TRAP_STATES.includes(i) || WALL_STATES.includes(i) || i === START_STATE) continue;
+                
+                const qs = Q[i]; const maxQ = Math.max(...qs); 
+                const arrow = document.getElementById(`policy-${i}`);
+                if (!arrow) continue;
+
+                if (maxQ === 0 && qs.every(v => v === 0)) { 
+                    arrow.innerText = '●'; arrow.classList.remove('learned'); 
+                    document.getElementById(`cell-${i}`).style.background = 'rgba(30, 41, 59, 0.6)';
+                } else {
+                    arrow.innerText = ARROWS[qs.indexOf(maxQ)]; arrow.classList.add('learned');
+                    const intensity = Math.min(Math.abs(maxQ) / 8, 0.6);
+                    document.getElementById(`cell-${i}`).style.background = maxQ > 0 ? `rgba(0, 240, 255, ${intensity})` : `rgba(239, 68, 68, ${intensity})`;
+                }
+            }
+        }
+
+        function renderQTable() {
+            const tbody = document.getElementById('q-table-body');
+            let h = `<tr><th>State</th><th>UP</th><th>RIGHT</th><th>DOWN</th><th>LEFT</th></tr>`;
+            for(let i=0; i<STATE_COUNT; i++) {
+                if(GOAL_STATES.includes(i) || TRAP_STATES.includes(i) || WALL_STATES.includes(i)) continue;
+                h += `<tr><td>S${i}</td>` + Q[i].map(v => `<td class="${v===Math.max(...Q[i])&&v!==0?'q-best':''}">${v.toFixed(2)}</td>`).join('') + `</tr>`;
+            }
+            tbody.innerHTML = h;
+        }
+
+        const termDescriptions = {
+            default: `<p class="text-gray-400 text-sm animate-pulse">👆 鼠标悬停在变量上查看解析。</p>`,
+            q: `<strong class="text-cyan-400">Q(S, A) 动作价值：</strong>AI当前的“直觉”。代表在路口S选方向A，未来总共能拿多少分的期望。`,
+            alpha: `<strong class="text-emerald-400">α 学习率：</strong>修正记忆的力度。值越大，AI对最近一次结局的印象就越深。`,
+            g: `<strong class="text-fuchsia-400">G 实际回报：</strong>回合结束后，系统从结局倒推出的【路费+奖金】总额。`
+        };
+
+        function showMCTerm(t) {
+            const el = document.getElementById('mc-term-explanation');
+            el.innerHTML = termDescriptions[t];
+            el.className = `min-h-[100px] mt-6 rounded-lg p-4 flex items-center justify-center text-center transition-all ${t==='default'?'bg-cyan-900/20 border-cyan-500/30':'bg-cyan-900/40 border-cyan-400'}`;
+        }
+
+        async function playIntroBackprop() {
+            document.getElementById('btn-intro-backprop').disabled = true;
+            let G = 0;
+            for(let i=2; i>=0; i--) {
+                const box = document.getElementById(`intro-box-${i}`);
+                G = (i===2?10:-1) + 0.9 * G; box.classList.add('highlight-backprop');
+                const label = document.createElement('div'); label.className = 'absolute -top-10 text-yellow-400 font-bold font-sci-fi'; label.innerText = `G=${G.toFixed(1)}`;
+                box.appendChild(label); if(i<2) document.getElementById(`intro-arrow-${i}`).style.color = '#d946ef';
+                await sleep(800); box.classList.remove('highlight-backprop');
+            }
+            document.getElementById('btn-intro-backprop').disabled = false;
+        }
+
+        window.onload = () => { switchScenario('intro'); updateSliders(); };
+        function updateSliders() { 
+            document.getElementById('val-eps').innerText = epsSlider.value;
+            document.getElementById('val-gam').innerText = gamSlider.value;
+            document.getElementById('val-spd').innerText = spdSlider.value + 'x';
+        }
+        epsSlider.oninput = updateSliders; gamSlider.oninput = updateSliders; spdSlider.oninput = updateSliders;
+        function switchConsoleTab(tab, btn) {
+            document.querySelectorAll('.console-tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('view-train').classList.toggle('hidden', tab!=='train');
+            document.getElementById('view-qtable').classList.toggle('hidden', tab!=='qtable');
+        }
+    </script>
+</body>
+</html>

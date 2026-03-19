@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星华大学：手势生物控制终端</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- 引入 MediaPipe Hands AI 模型 -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+    <style>
+        body {
+            background-color: #050814;
+            font-family: 'Noto Sans SC', sans-serif;
+            color: #e2e8f0;
+            overflow: hidden;
+            background-image: radial-gradient(circle at 50% 50%, rgba(0, 240, 255, 0.05) 0%, transparent 60%);
+        }
+        .font-sci-fi { font-family: 'Orbitron', sans-serif; }
+        
+        .glass-panel {
+            background: rgba(11, 15, 25, 0.6);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.05);
+        }
+
+        /* 隐藏原始视频，只显示 Canvas 绘制的科幻效果 */
+        #input_video { display: none; }
+        
+        #output_canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1); /* 镜像翻转，符合直觉 */
+            border-radius: 0.75rem;
+            filter: grayscale(80%) contrast(120%) brightness(80%); /* 画面调整为科幻冷色调 */
+        }
+
+        /* 扫描线效果 */
+        .scanline {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(to bottom, transparent, rgba(0, 240, 255, 0.2) 50%, transparent);
+            transform: translateY(-100%);
+            animation: scan 3s infinite linear;
+            pointer-events: none;
+            border-radius: 0.75rem;
+        }
+
+        @keyframes scan {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+
+        /* 互动反馈球 */
+        #reaction-core {
+            transition: all 0.2s;
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+        }
+        .pinched {
+            background-color: #FFD700 !important;
+            box-shadow: 0 0 50px #FFD700 !important;
+            transform: scale(1.2);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-6">
+
+    <div class="text-center mb-6 w-full max-w-4xl">
+        <h1 class="text-3xl font-sci-fi font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 mb-2">
+            生物接口测试：隔空捏合控制
+        </h1>
+        <p class="text-cyan-400/70 text-sm tracking-widest font-sci-fi">BIOMETRIC HAND TRACKING MODULE V1.0</p>
+    </div>
+
+    <div class="w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <!-- 左侧：摄像头视觉反馈区 -->
+        <div class="md:col-span-2 glass-panel rounded-xl p-2 relative h-[400px]">
+            <div class="absolute top-4 left-4 z-10 font-sci-fi text-xs text-cyan-400 bg-black/50 px-2 py-1 border border-cyan-500/30 rounded">
+                CAMERA FEED [ONLINE]
+            </div>
+            <video id="input_video"></video>
+            <canvas id="output_canvas" class="w-full h-full"></canvas>
+            <div class="scanline"></div>
+            
+            <!-- 加载提示 -->
+            <div id="loading" class="absolute inset-0 flex flex-col items-center justify-center bg-black/80 rounded-xl z-20">
+                <div class="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p class="font-sci-fi text-cyan-400 text-sm">INITIALIZING AI MODEL...</p>
+                <p class="text-xs text-gray-500 mt-2">首次加载需下载模型，请允许摄像头权限</p>
+            </div>
+        </div>
+
+        <!-- 右侧：交互逻辑反馈区 -->
+        <div class="glass-panel rounded-xl p-6 flex flex-col items-center justify-center relative">
+            <h3 class="font-sci-fi text-gray-400 mb-8 text-center text-sm">
+                将手置于镜头前<br>大拇指与食指捏合触发
+            </h3>
+            
+            <!-- 核心反应炉 -->
+            <div id="reaction-core" class="w-32 h-32 rounded-full border-4 border-cyan-500/30 bg-cyan-900/20 flex flex-col items-center justify-center relative">
+                <span id="pinch-status" class="font-sci-fi text-cyan-400 font-bold tracking-wider z-10">OPEN</span>
+                <span class="text-[10px] text-gray-500 mt-1 z-10">PINCH DETECTOR</span>
+                
+                <!-- 内部波纹 -->
+                <div class="absolute inset-0 rounded-full border border-cyan-400/20 animate-ping"></div>
+            </div>
+
+            <div class="mt-12 w-full bg-black/50 border border-gray-800 rounded p-4">
+                <div class="text-[10px] text-gray-500 font-sci-fi mb-1">SYSTEM LOGS:</div>
+                <div id="log-output" class="text-xs text-emerald-400 font-mono h-20 overflow-hidden flex flex-col justify-end">
+                    <!-- 日志输出 -->
+                    <div>> System Ready.</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const videoElement = document.getElementById('input_video');
+        const canvasElement = document.getElementById('output_canvas');
+        const canvasCtx = canvasElement.getContext('2d');
+        const loadingEl = document.getElementById('loading');
+        const reactionCore = document.getElementById('reaction-core');
+        const pinchStatus = document.getElementById('pinch-status');
+        const logOutput = document.getElementById('log-output');
+
+        let isPinched = false;
+        let pinchCount = 0;
+
+        function addLog(msg) {
+            const div = document.createElement('div');
+            div.innerText = `> ${msg}`;
+            logOutput.appendChild(div);
+            if (logOutput.children.length > 5) {
+                logOutput.removeChild(logOutput.firstChild);
+            }
+        }
+
+        // 计算两点之间的距离
+        function getDistance(p1, p2) {
+            return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+        }
+
+        function onResults(results) {
+            // 隐藏加载动画
+            if(loadingEl.style.display !== 'none') {
+                loadingEl.style.display = 'none';
+                addLog('AI Model Loaded.');
+            }
+
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            
+            // 绘制摄像头画面
+            canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                for (const landmarks of results.multiHandLandmarks) {
+                    
+                    // 绘制手部骨架 (科幻风)
+                    drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: 'rgba(0, 240, 255, 0.5)', lineWidth: 2});
+                    drawLandmarks(canvasCtx, landmarks, {color: '#00F0FF', lineWidth: 1, radius: 2});
+
+                    // 获取大拇指尖(4)和食指尖(8)的坐标
+                    const thumbTip = landmarks[4];
+                    const indexTip = landmarks[8];
+
+                    // 绘制这两个点的特殊标记
+                    drawLandmarks(canvasCtx, [thumbTip, indexTip], {color: '#FFD700', lineWidth: 2, radius: 4});
+
+                    // 计算距离 (归一化坐标，所以距离通常在 0 到 1 之间)
+                    const distance = getDistance(thumbTip, indexTip);
+                    
+                    // 设定捏合阈值 (根据实际测试调整)
+                    const pinchThreshold = 0.05;
+
+                    if (distance < pinchThreshold && !isPinched) {
+                        // 触发捏合
+                        isPinched = true;
+                        pinchCount++;
+                        reactionCore.classList.add('pinched');
+                        pinchStatus.innerText = "PINCHED!";
+                        pinchStatus.className = "font-sci-fi text-gray-900 font-bold tracking-wider z-10";
+                        addLog(`Command Triggered: ${pinchCount}`);
+                        
+                        // 这里可以绑定任何你想触发的函数！
+                        // 比如：stepAlgorithm(); 
+                    } else if (distance > pinchThreshold + 0.02 && isPinched) {
+                        // 松开捏合 (加上 0.02 的防抖区)
+                        isPinched = false;
+                        reactionCore.classList.remove('pinched');
+                        pinchStatus.innerText = "OPEN";
+                        pinchStatus.className = "font-sci-fi text-cyan-400 font-bold tracking-wider z-10";
+                    }
+                }
+            }
+            canvasCtx.restore();
+        }
+
+        // 初始化 MediaPipe Hands
+        const hands = new Hands({locateFile: (file) => {
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+        }});
+        
+        hands.setOptions({
+            maxNumHands: 1, // 只识别一只手，降低性能开销
+            modelComplexity: 1,
+            minDetectionConfidence: 0.6,
+            minTrackingConfidence: 0.6
+        });
+        
+        hands.onResults(onResults);
+
+        // 启动摄像头
+        const camera = new Camera(videoElement, {
+            onFrame: async () => {
+                await hands.send({image: videoElement});
+            },
+            width: 1280,
+            height: 720
+        });
+        
+        camera.start();
+    </script>
+</body>
+</html>
