@@ -12,7 +12,7 @@
 
 强烈建议直接访问星华大学线上实验室，电脑/手机端均可直接体验，无需下载任何代码：
 
-👉 [https://frz15.github.io/LittleStar-Algo-Lab/](https://frz15.github.io/LittleStar-Algo-Lab/)
+👉 [https://littlestarstar15.github.io/LittleStar-Algo-Lab/](https://littlestarstar15.github.io/LittleStar-Algo-Lab/)
 
 ## 🛸 核心特性 (Features)
 

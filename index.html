@@ -73,6 +73,12 @@
             border-color: rgba(255, 215, 0, 0.6);
             box-shadow: 0 10px 30px rgba(255, 215, 0, 0.15), inset 0 0 20px rgba(255, 215, 0, 0.05);
         }
+        
+        /* 强化学习卡片专属悬停色 */
+        .module-card.rl-card:hover {
+            border-color: rgba(16, 185, 129, 0.6);
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.15), inset 0 0 20px rgba(16, 185, 129, 0.05);
+        }
 
         /* 卡片内部的扫描线特效 */
         .module-card::before {
@@ -105,6 +111,7 @@
 
         .dl-card .module-badge { color: #d946ef; background: rgba(217, 70, 239, 0.1); border-color: rgba(217, 70, 239, 0.3); }
         .math-card .module-badge { color: #FFD700; background: rgba(255, 215, 0, 0.1); border-color: rgba(255, 215, 0, 0.3); }
+        .rl-card .module-badge { color: #10b981; background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3); }
 
         /* 顶部装饰线 */
         .top-glow {
@@ -206,8 +213,30 @@
                 </p>
             </a>
 
-            <a href="pathfinder_ultimate.html" class="module-card group">
+            <a href="linked_list_visualizer.html" class="module-card group">
                 <div class="module-badge">UNIT 05</div>
+                <div class="w-12 h-12 rounded bg-pink-900/40 border border-pink-500/30 flex items-center justify-center mb-4 group-hover:bg-pink-500/20 transition-colors">
+                    <span class="text-2xl">🔗</span>
+                </div>
+                <h3 class="text-lg font-bold text-gray-100 mb-2 font-sci-fi group-hover:text-cyan-300 transition-colors">量子链表与指针引擎</h3>
+                <p class="text-gray-400 text-sm flex-1 leading-relaxed">
+                    突破连续内存的限制！亲眼见证 O(1) 的指针断裂与重连，一键切换单向、双向与循环链表形态。
+                </p>
+            </a>
+
+            <a href="stack_visualizer.html" class="module-card group">
+                <div class="module-badge">UNIT 06</div>
+                <div class="w-12 h-12 rounded bg-red-900/40 border border-red-500/30 flex items-center justify-center mb-4 group-hover:bg-red-500/20 transition-colors">
+                    <span class="text-2xl">🥞</span>
+                </div>
+                <h3 class="text-lg font-bold text-gray-100 mb-2 font-sci-fi group-hover:text-cyan-300 transition-colors">LIFO 垂直能量井 (栈)</h3>
+                <p class="text-gray-400 text-sm flex-1 leading-relaxed">
+                    探秘最霸道的容器规则：后进先出。手搓 Push 与 Pop，亲手触发导致程序崩溃的 Stack Overflow (栈溢出) 灾难。
+                </p>
+            </a>
+
+            <a href="pathfinder_ultimate.html" class="module-card group">
+                <div class="module-badge">UNIT 07</div>
                 <div class="w-12 h-12 rounded bg-orange-900/40 border border-orange-500/30 flex items-center justify-center mb-4 group-hover:bg-orange-500/20 transition-colors">
                     <span class="text-2xl">🛸</span>
                 </div>
@@ -275,6 +304,31 @@
                 <h3 class="text-lg font-bold text-gray-100 mb-2 font-sci-fi group-hover:text-fuchsia-400 transition-colors">生物接口：手势控制终端</h3>
                 <p class="text-gray-400 text-sm flex-1 leading-relaxed">
                     无需任何后端服务器！调用本地摄像头与纯前端边缘计算模型，体验“隔空捏合”触发系统指令的赛博朋克交互。
+                </p>
+            </a>
+
+        </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 模块 4：强化学习 (Reinforcement Learning)    -->
+    <!-- ========================================== -->
+    <section class="w-full max-w-6xl mb-16">
+        <h2 class="text-2xl font-bold text-emerald-400 font-sci-fi category-title mb-8 flex items-center gap-3" style="--tw-shadow-color: rgba(16, 185, 129, 0.5); --tw-gradient-from: rgba(16, 185, 129, 0.8);">
+            <span class="text-3xl">🎮</span> REINFORCEMENT LEARNING
+            <span class="text-sm text-emerald-500/50 ml-2 hidden md:inline">强化学习与决策机制</span>
+        </h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            
+            <a href="monte_carlo_rl.html" class="module-card rl-card group">
+                <div class="module-badge">UNIT 01</div>
+                <div class="w-12 h-12 rounded bg-emerald-900/40 border border-emerald-500/30 flex items-center justify-center mb-4 group-hover:bg-emerald-500/20 transition-colors">
+                    <span class="text-2xl">🛸</span>
+                </div>
+                <h3 class="text-lg font-bold text-gray-100 mb-2 font-sci-fi group-hover:text-emerald-400 transition-colors">蒙特卡洛星际探路者</h3>
+                <p class="text-gray-400 text-sm flex-1 leading-relaxed">
+                    无需地图与规则（Model-Free）！全息演示 AI 是如何在一次次“坠毁”后，通过经验回溯倒推（MC Backpropagation）最终涌现出完美的避障策略。
                 </p>
             </a>
 
