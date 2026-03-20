@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星华大学：数据传输信道 (队列 QUEUE)</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Google Fonts 科幻字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Noto+Sans+SC:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        /* 宇宙深空黑背景 */
+        body {
+            background-color: #03050a;
+            font-family: 'Noto Sans SC', sans-serif;
+            color: #e2e8f0;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 50% 100%, rgba(255, 215, 0, 0.05) 0%, transparent 60%),
+                radial-gradient(circle at 10% 20%, rgba(0, 240, 255, 0.05) 0%, transparent 40%),
+                linear-gradient(to bottom, transparent, rgba(0,0,0,0.8));
+        }
+
+        .font-sci-fi { font-family: 'Orbitron', sans-serif; }
+
+        .glass-panel {
+            background: rgba(11, 15, 25, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.05);
+        }
+
+        /* 标签切换按钮 */
+        .tab-btn { transition: all 0.3s ease; border-bottom: 2px solid transparent; white-space: nowrap; }
+        .tab-btn.active { color: #FFD700; border-bottom-color: #FFD700; text-shadow: 0 0 8px rgba(255, 215, 0, 0.6); font-weight: bold; }
+
+        /* 能量信道 (Queue Container) */
+        .channel-container {
+            position: relative;
+            width: 540px;
+            height: 100px;
+            border-top: 4px solid rgba(255, 215, 0, 0.5);
+            border-bottom: 4px solid rgba(255, 215, 0, 0.5);
+            background: linear-gradient(to right, rgba(16, 185, 129, 0.1) 0%, rgba(0, 240, 255, 0.1) 100%);
+            box-shadow: inset 0 20px 30px rgba(255, 215, 0, 0.1), 0 10px 20px rgba(255, 215, 0, 0.2);
+            display: flex; flex-direction: row; align-items: center; padding-left: 4px;
+        }
+
+        /* 迷你能量井 (应用演示使用) */
+        .mini-channel {
+            position: relative; width: 320px; height: 80px;
+            border-top: 2px solid rgba(0, 240, 255, 0.5); border-bottom: 2px solid rgba(0, 240, 255, 0.5);
+            background: linear-gradient(to right, rgba(0, 240, 255, 0.1) 0%, transparent 100%);
+            display: flex; flex-direction: row; align-items: center; padding-left: 2px;
+        }
+        .mini-channel.process-channel {
+            border-color: rgba(217, 70, 239, 0.5); border-right-color: rgba(217, 70, 239, 0.8);
+            background: linear-gradient(to right, rgba(217, 70, 239, 0.1) 0%, transparent 100%);
+        }
+
+        /* 队列内节点 (数据包) */
+        .queue-node {
+            width: 80px; height: 60px; margin-right: 4px;
+            background: rgba(15, 23, 42, 0.9); border: 2px solid #FFD700; border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Orbitron', monospace; font-size: 20px; font-weight: bold; color: #FFD700;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3), inset 0 0 10px rgba(255, 215, 0, 0.2);
+            position: absolute; 
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), left 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s;
+        }
+        
+        .mini-node {
+            width: 60px; height: 40px; margin-right: 4px; position: absolute;
+            background: rgba(15, 23, 42, 0.9); border: 1px solid #00F0FF; border-radius: 4px;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Orbitron', monospace; font-size: 12px; font-weight: bold; color: #00F0FF;
+            transition: all 0.3s ease;
+        }
+        .process-node { border-color: #d946ef; color: #d946ef; }
+
+        /* 动画状态更新：左侧进入，右侧退出 */
+        .node-enter { transform: translateX(-150px) scale(0.5); opacity: 0; }
+        .node-exit { transform: translateX(150px) scale(1.2) !important; opacity: 0; filter: brightness(2) drop-shadow(0 0 20px currentColor); transition: all 0.4s ease-out; }
+        .node-peek { animation: peek-flash 0.6s ease-in-out; }
+
+        @keyframes peek-flash {
+            0%, 100% { background: rgba(15, 23, 42, 0.9); border-color: #FFD700; color: #FFD700; box-shadow: 0 0 10px rgba(255, 215, 0, 0.3); }
+            50% { background: rgba(0, 240, 255, 0.4); border-color: #00F0FF; color: #FFF; box-shadow: 0 0 30px #00F0FF; transform: scale(1.05); z-index: 20; }
+        }
+
+        /* 底层架构：数组 */
+        .arch-box { 
+            display: inline-flex; padding: 4px; background: rgba(15, 23, 42, 0.6); 
+            border: 2px solid rgba(0, 240, 255, 0.4); border-radius: 6px; 
+            box-shadow: inset 0 0 20px rgba(0, 240, 255, 0.1); position: relative;
+        }
+        .arch-slot { 
+            width: 46px; height: 46px; border-right: 1px solid rgba(0, 240, 255, 0.2); 
+            display: flex; align-items: center; justify-content: center; 
+            font-family: 'Orbitron', monospace; font-weight: bold; font-size: 16px;
+            color: transparent; position: relative; transition: all 0.3s;
+        }
+        .arch-slot:last-child { border-right: none; }
+        .arch-slot.filled { 
+            background: rgba(0, 240, 255, 0.2); color: #FFF; 
+            text-shadow: 0 0 8px #00F0FF; box-shadow: inset 0 0 10px rgba(0, 240, 255, 0.2);
+        }
+        .arch-slot::after { 
+            content: attr(data-idx); position: absolute; bottom: -20px; 
+            font-size: 10px; color: rgba(0, 240, 255, 0.5); font-family: 'Orbitron', sans-serif; 
+        }
+
+        /* 底层架构：链表 */
+        .ll-arch-node { 
+            display: flex; align-items: center; background: rgba(15, 23, 42, 0.9); 
+            border: 1px solid rgba(217, 70, 239, 0.5); border-radius: 6px; 
+            margin-right: 24px; position: relative; box-shadow: 0 0 15px rgba(217, 70, 239, 0.2); 
+            transition: all 0.3s; flex-shrink: 0; 
+        }
+        .ll-val { padding: 6px 12px; color: #FFF; font-size: 14px; font-family: 'Orbitron', monospace; font-weight: bold; border-right: 1px dashed rgba(217, 70, 239, 0.4); }
+        .ll-ptr { padding: 6px 8px; color: rgba(217, 70, 239, 0.8); background: rgba(0, 0, 0, 0.5); font-size: 10px; display: flex; align-items: center; justify-content: center; }
+        .ll-arrow { position: absolute; right: -20px; color: rgba(217, 70, 239, 0.6); font-weight: bold; font-size: 16px; }
+
+        /* 🚀 新增：底层架构之双栈实现 (Dual Stack) */
+        .arch-silo {
+            position: relative; width: 70px; height: 130px;
+            border-left: 2px solid rgba(0, 240, 255, 0.5); border-right: 2px solid rgba(0, 240, 255, 0.5); border-bottom: 4px solid rgba(0, 240, 255, 0.8);
+            border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;
+            background: linear-gradient(to top, rgba(0, 240, 255, 0.1) 0%, transparent 100%);
+            display: flex; flex-direction: column-reverse; align-items: center; padding-bottom: 2px;
+        }
+        .arch-silo.out-silo {
+            border-color: rgba(217, 70, 239, 0.5); border-bottom-color: rgba(217, 70, 239, 0.8);
+            background: linear-gradient(to top, rgba(217, 70, 239, 0.1) 0%, transparent 100%);
+        }
+        .arch-silo::before {
+            content: ''; position: absolute; top: -2px; left: -10px; right: -10px; height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.8), transparent); box-shadow: 0 0 10px #00F0FF; opacity: 0.5;
+        }
+        .arch-silo.out-silo::before { background: linear-gradient(90deg, transparent, rgba(217, 70, 239, 0.8), transparent); box-shadow: 0 0 10px #d946ef; }
+        
+        .silo-node {
+            width: 56px; height: 22px; position: absolute;
+            background: rgba(15, 23, 42, 0.9); border: 1px solid #00F0FF; border-radius: 4px;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Orbitron', monospace; font-size: 11px; font-weight: bold; color: #00F0FF;
+            transition: all 0.3s ease;
+        }
+        .silo-node.out-node { border-color: #d946ef; color: #d946ef; }
+        .arch-node-exit { transform: translateY(-80px) scale(1.2) !important; opacity: 0; filter: brightness(2) drop-shadow(0 0 20px currentColor); transition: all 0.4s ease-out; }
+
+        .fade-in { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+
+        /* 控制台与滚动条 */
+        .math-board { background: rgba(0, 0, 0, 0.6); border: 1px dashed rgba(255, 215, 0, 0.3); border-radius: 8px; padding: 12px; font-family: 'Orbitron', monospace; }
+        button { transition: all 0.2s; }
+        button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 0 15px rgba(255, 215, 0, 0.4); }
+        button:active:not(:disabled) { transform: translateY(1px); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+        .control-input { background: rgba(0,0,0,0.6); border: 1px solid rgba(255, 215, 0, 0.3); color: #FFD700; text-align: center; border-radius: 4px; padding: 4px; width: 80px; outline: none; font-family: 'Orbitron'; }
+        .control-input:focus { border-color: #FFD700; box-shadow: 0 0 8px rgba(255, 215, 0, 0.5); }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+        .cyber-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+        .cyber-scroll::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.3); border-radius: 3px; }
+        .cyber-scroll::-webkit-scrollbar-thumb { background: rgba(217, 70, 239, 0.4); border-radius: 3px; }
+        .cyber-scroll::-webkit-scrollbar-thumb:hover { background: rgba(217, 70, 239, 0.8); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4 md:p-6 pt-16 md:pt-6">
+
+    <!-- 返回按钮 -->
+    <a href="index.html" class="fixed top-4 left-4 md:top-6 md:left-6 z-50 flex items-center justify-center gap-2 px-3 py-2 md:px-4 md:py-2 rounded border border-cyan-500/30 bg-black/60 backdrop-blur-md text-cyan-500/70 hover:text-cyan-300 hover:border-cyan-400 hover:shadow-[0_0_15px_rgba(0,240,255,0.4)] transition-all group text-decoration-none">
+        <svg class="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        <span class="hidden md:inline tracking-wider font-sci-fi text-xs md:text-sm pt-[2px] leading-none">MAIN TERMINAL</span>
+    </a>
+
+    <!-- 顶部标题 -->
+    <div class="text-center mb-6 mt-4 md:mt-0 w-full">
+        <h1 class="text-3xl md:text-4xl font-sci-fi font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 mb-2 drop-shadow-[0_0_8px_rgba(255,215,0,0.5)]">
+            星际数据传输信道：队列 (QUEUE)
+        </h1>
+        <p class="text-yellow-400/60 text-sm tracking-widest font-sci-fi">FIRST IN, FIRST OUT (FIFO) DATA CHANNEL</p>
+    </div>
+
+    <!-- 理论铺垫区 -->
+    <div class="w-full max-w-6xl glass-panel rounded-2xl p-6 md:p-8 mb-6 flex flex-col md:flex-row gap-8 items-center border-l-4 border-l-yellow-400">
+        <div class="flex-1">
+            <h2 class="text-xl font-bold text-white mb-3">最公平的流水线法则：<span class="text-yellow-400">先进先出 (FIFO)</span>。</h2>
+            <p class="text-gray-400 text-sm leading-relaxed mb-2">
+                如果说栈是单向深井，那么队列 (Queue) 就是一条**单向传送带**。数据永远从传送带起点（<span class="text-emerald-400 font-bold font-sci-fi">REAR / 队尾</span>）被推入，然后像水流一样把前面的数据不断往终点（<span class="text-cyan-400 font-bold font-sci-fi">FRONT / 队头</span>）挤压，最后从终点离开。
+            </p>
+            <p class="text-gray-400 text-sm leading-relaxed">
+                <strong class="text-white">最先进入信道的数据，必须最先被传输出去。</strong> 你的打印机任务、操作系统进程调度、以及游戏里的匹配排队，全都是由它支撑！
+            </p>
+        </div>
+    </div>
+
+    <!-- 场景切换 Tabs -->
+    <div class="flex gap-4 md:gap-8 mb-6 border-b border-gray-800 w-full max-w-6xl px-4 overflow-x-auto pb-1">
+        <button id="tab-core" class="tab-btn active pb-3 font-sci-fi text-gray-400 hover:text-gray-200" onclick="switchView('core')">
+            [1] CORE ENGINE (核心机制)
+        </button>
+        <button id="tab-arch" class="tab-btn pb-3 font-sci-fi text-gray-400 hover:text-gray-200" onclick="switchView('arch')">
+            [2] ARCHITECTURE (底层实现)
+        </button>
+        <button id="tab-app" class="tab-btn pb-3 font-sci-fi text-gray-400 hover:text-gray-200" onclick="switchView('app')">
+            [3] TASK SCHEDULER (任务调度应用)
+        </button>
+    </div>
+
+    <!-- 视图 1：基础核心引擎 -->
+    <div id="view-core" class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-7 glass-panel rounded-2xl p-6 flex flex-col items-center justify-center relative overflow-hidden min-h-[500px]">
+            <div class="absolute top-4 left-4 text-[10px] text-yellow-500/50 font-sci-fi">PIPELINE VISUALIZATION</div>
+            <div class="absolute top-4 right-4 text-right">
+                <div class="text-[10px] text-gray-500 font-sci-fi">CAPACITY</div>
+                <div class="text-lg font-sci-fi font-bold text-white"><span id="lbl-count" class="text-yellow-400">0</span> / 6</div>
+            </div>
+            
+            <div class="channel-container mt-12" id="channel">
+                <div id="ptr-rear" class="absolute -top-10 font-sci-fi text-emerald-400 text-sm font-bold flex flex-col items-center gap-2 transition-all duration-300" style="left: 0px; opacity: 0;">
+                    REAR <span class="text-lg">▼</span>
+                </div>
+                <div id="ptr-front" class="absolute -top-10 font-sci-fi text-cyan-400 text-sm font-bold flex flex-col items-center gap-2 transition-all duration-300" style="right: 0px; opacity: 0;">
+                    FRONT <span class="text-lg">▼</span>
+                </div>
+            </div>
+            <div class="mt-4 w-full max-w-[540px] flex justify-between px-2 text-[10px] text-gray-500 font-sci-fi tracking-widest font-bold">
+                <span class="text-emerald-500/80">⬅ ENQUEUE (入口)</span>
+                <span class="text-cyan-500/80">DEQUEUE (出口) ➡</span>
+            </div>
+        </div>
+
+        <div class="lg:col-span-5 glass-panel rounded-2xl p-6 flex flex-col">
+            <h2 class="text-lg font-bold text-yellow-300 font-sci-fi mb-4 border-b border-yellow-500/30 pb-2">CHANNEL CONSOLE</h2>
+            <div class="math-board mb-6">
+                <div class="text-[9px] text-yellow-500/50 mb-1">EXECUTION LOG</div>
+                <div id="code-log" class="text-xs text-gray-300 space-y-1 h-32 overflow-y-auto cyber-scroll">
+                    <div>> PIPELINE INITIALIZED. CAPACITY: 6.</div>
+                    <div>> AWAITING COMMAND...</div>
+                </div>
+            </div>
+            <div class="space-y-5 flex-1">
+                <div class="border-l-2 border-emerald-500 pl-3">
+                    <label class="text-[10px] text-emerald-400 font-sci-fi block mb-2">1. ENQUEUE / 入队 (从左侧推入)</label>
+                    <div class="flex gap-3 items-center">
+                        <span class="text-gray-400 font-sci-fi text-xs">Data:</span>
+                        <input type="number" id="inp-enqueue" class="control-input" value="42" min="0" max="999">
+                        <button onclick="handleEnqueue()" class="ml-auto px-6 py-2 rounded border border-emerald-500/50 bg-emerald-900/30 text-emerald-400 text-sm font-bold font-sci-fi">ENQUEUE</button>
+                    </div>
+                </div>
+                <div class="border-l-2 border-red-500 pl-3">
+                    <label class="text-[10px] text-red-400 font-sci-fi block mb-2">2. DEQUEUE / 出队 (从右侧流出)</label>
+                    <div class="flex gap-3 items-center">
+                        <p class="text-xs text-gray-500 flex-1">移除并返回最右端的 FRONT 元素。</p>
+                        <button onclick="handleDequeue()" class="ml-auto px-6 py-2 rounded border border-red-500/50 bg-red-900/30 text-red-400 text-sm font-bold font-sci-fi">DEQUEUE</button>
+                    </div>
+                </div>
+                <div class="border-l-2 border-cyan-500 pl-3">
+                    <label class="text-[10px] text-cyan-400 font-sci-fi block mb-2">3. PEEK / 窥视 O(1)</label>
+                    <div class="flex gap-3 items-center">
+                        <p class="text-xs text-gray-500 flex-1">只查看最前方的即将被处理的数据。</p>
+                        <button onclick="handlePeek()" class="ml-auto px-6 py-2 rounded border border-cyan-500/50 bg-cyan-900/30 text-cyan-400 text-sm font-bold font-sci-fi">PEEK</button>
+                    </div>
+                </div>
+            </div>
+            <button onclick="resetQueue()" class="mt-8 w-full py-2 rounded border border-gray-600 bg-black/40 text-gray-400 text-xs font-sci-fi hover:text-white transition-colors">FLUSH PIPELINE (清空传送带)</button>
+        </div>
+    </div>
+
+    <!-- 🚀 视图 2：底层架构 (全面扩建为三列) 🚀 -->
+    <div id="view-arch" class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-3 gap-6 hidden">
+        <!-- 方式一：数组/环形缓冲 -->
+        <div class="glass-panel rounded-2xl p-4 md:p-6 flex flex-col">
+            <h3 class="text-lg font-bold text-cyan-400 font-sci-fi mb-2 flex items-center gap-2"><span class="text-2xl">📦</span> 方式一：数组/环形缓冲</h3>
+            <p class="text-[11px] text-gray-400 mb-4 border-b border-cyan-500/20 pb-4 leading-relaxed">
+                真实的内存不会像水流一样整体移动（那极其消耗性能 O(N)）。它实际上是通过移动 `FRONT` 和 `REAR` 两个指针在固定内存块中打转（环形队列）来实现 O(1) 的伪位移。
+            </p>
+            <div class="flex flex-col items-center flex-1 justify-center relative min-h-[160px]">
+                <div class="relative inline-block mt-4">
+                    <div class="arch-box" id="arch-array">
+                        <div class="arch-slot" data-idx="[0]"></div>
+                        <div class="arch-slot" data-idx="[1]"></div>
+                        <div class="arch-slot" data-idx="[2]"></div>
+                        <div class="arch-slot" data-idx="[3]"></div>
+                        <div class="arch-slot" data-idx="[4]"></div>
+                    </div>
+                    <div id="arch-arr-front-ptr" class="absolute top-[-40px] text-cyan-400 font-sci-fi font-bold transition-all duration-300 flex flex-col items-center" style="left: -20px; opacity: 0; transform: translateX(-50%);">
+                        ▲<br><span class="text-[10px]" id="arr-front-label">FRONT[0]</span>
+                    </div>
+                    <div id="arch-arr-rear-ptr" class="absolute bottom-[-40px] text-emerald-400 font-sci-fi font-bold transition-all duration-300 flex flex-col items-center" style="left: -20px; opacity: 0; transform: translateX(-50%);">
+                        ▼<br><span class="text-[10px]" id="arr-rear-label">REAR</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 方式二：链表实现 -->
+        <div class="glass-panel rounded-2xl p-4 md:p-6 flex flex-col max-w-full overflow-hidden">
+            <h3 class="text-lg font-bold text-fuchsia-400 font-sci-fi mb-2 flex items-center gap-2"><span class="text-2xl">🔗</span> 方式二：链表实现</h3>
+            <p class="text-[11px] text-gray-400 mb-4 border-b border-fuchsia-500/20 pb-4 leading-relaxed">
+                打破连续空间的束缚。入队时，在宇宙任意角落新建一个分离舱，让原本的后端节点指向它。出队时，直接移除 FRONT 节点。因为不用整体搬移数据，所以也是完美的 O(1)。
+            </p>
+            <div class="flex flex-col items-center flex-1 justify-center relative min-h-[160px] w-full">
+                <div class="flex items-center justify-start w-full px-2 overflow-x-auto pt-8 pb-4 cyber-scroll" id="arch-ll">
+                    <span class="text-gray-600 font-sci-fi text-xs font-bold bg-black/50 px-2 py-1 rounded border border-gray-700 flex-shrink-0" id="ll-null">NULL</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🚀 方式三：双栈模拟 (Dual Stack) 🚀 -->
+        <div class="glass-panel rounded-2xl p-4 md:p-6 flex flex-col max-w-full overflow-hidden">
+            <h3 class="text-lg font-bold text-yellow-400 font-sci-fi mb-2 flex items-center gap-2"><span class="text-2xl">🥞</span> 方式三：双栈模拟队列</h3>
+            <p class="text-[11px] text-gray-400 mb-4 border-b border-yellow-500/20 pb-4 leading-relaxed">
+                大厂经典面试题：用两个“后进先出”的栈拼出“先进先出”。入队全压入 <strong>IN栈</strong>。出队时，若 <strong>OUT栈</strong> 为空，则将 IN 栈全数倒入 OUT 栈（实现完美的反转顺序），再弹出。
+            </p>
+            <div class="flex items-end justify-center gap-4 flex-1 min-h-[160px] relative w-full pt-4">
+                <div class="flex flex-col items-center">
+                    <div class="arch-silo" id="arch-silo-in"></div>
+                    <div class="mt-2 font-sci-fi text-cyan-400 text-[9px] font-bold">IN STACK (入队专用)</div>
+                </div>
+                <div class="text-gray-500 text-xl font-bold pb-12 animate-pulse">⇄</div>
+                <div class="flex flex-col items-center">
+                    <div class="arch-silo out-silo" id="arch-silo-out"></div>
+                    <div class="mt-2 font-sci-fi text-fuchsia-400 text-[9px] font-bold">OUT STACK (出队专用)</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 全局操作按钮 -->
+        <div class="lg:col-span-3 flex flex-wrap justify-center gap-4 mt-2">
+            <button onclick="simulateArchEnqueue()" class="px-8 py-3 rounded-full border border-emerald-400 bg-emerald-900/30 text-emerald-400 font-bold font-sci-fi hover:bg-emerald-400 hover:text-black hover:shadow-[0_0_20px_rgba(16,185,129,0.6)] transition-all flex items-center gap-2">
+                <span class="text-xl">+</span> SIMULATE ENQUEUE
+            </button>
+            <button onclick="simulateArchDequeue()" class="px-8 py-3 rounded-full border border-red-400 bg-red-900/30 text-red-400 font-bold font-sci-fi hover:bg-red-400 hover:text-black hover:shadow-[0_0_20px_rgba(239,68,68,0.6)] transition-all flex items-center gap-2">
+                <span class="text-xl">-</span> SIMULATE DEQUEUE
+            </button>
+        </div>
+    </div>
+
+    <!-- 视图 3：任务调度 (应用层) -->
+    <div id="view-app" class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-6 hidden">
+        <div class="lg:col-span-12 glass-panel rounded-2xl p-6 mb-4 flex items-center justify-between border-l-4 border-l-cyan-400 bg-gradient-to-r from-cyan-900/20 to-transparent">
+            <div>
+                <h3 class="text-xl font-bold text-cyan-300 font-sci-fi mb-1">智能任务调度中心 (TASK SCHEDULER)</h3>
+                <p class="text-sm text-gray-400">新任务从左侧涌入排队，CPU 则不断从右侧的最前端取走任务进行处理。</p>
+            </div>
+        </div>
+
+        <div class="lg:col-span-6 glass-panel rounded-2xl p-6 flex flex-col">
+            <div class="text-[10px] text-gray-500 font-sci-fi mb-2">NEW TASK INPUT</div>
+            <input type="text" id="app-task-input" class="w-full bg-black/60 border border-gray-700 rounded p-4 text-emerald-400 font-mono text-sm resize-none focus:outline-none mb-4" placeholder="> 输入新任务名称">
+            
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <button onclick="appAddTask('分析数据流')" class="py-2 border border-gray-600 bg-gray-800/50 text-gray-300 text-xs hover:border-emerald-400 hover:text-emerald-400">+ "分析数据流"</button>
+                <button onclick="appAddTask('优化能量护盾')" class="py-2 border border-gray-600 bg-gray-800/50 text-gray-300 text-xs hover:border-emerald-400 hover:text-emerald-400">+ "优化能量护盾"</button>
+                <button onclick="appAddTask('路径计算')" class="py-2 border border-gray-600 bg-gray-800/50 text-gray-300 text-xs hover:border-emerald-400 hover:text-emerald-400">+ "路径计算"</button>
+                <button onclick="appAddTask('通信协议升级')" class="py-2 border border-gray-600 bg-gray-800/50 text-gray-300 text-xs hover:border-emerald-400 hover:text-emerald-400">+ "通信协议升级"</button>
+            </div>
+
+            <div class="flex gap-4 mt-auto">
+                <button id="btn-addTask" onclick="appAddTask(document.getElementById('app-task-input').value)" class="flex-1 py-3 rounded border border-emerald-500/50 bg-emerald-900/30 text-emerald-400 font-bold font-sci-fi">➕ ENQUEUE</button>
+                <button id="btn-processTask" onclick="appProcessTask()" disabled class="flex-1 py-3 rounded border border-cyan-500/50 bg-cyan-900/30 text-cyan-400 font-bold font-sci-fi">▶ PROCESS DEQUEUE</button>
+            </div>
+        </div>
+
+        <div class="lg:col-span-6 glass-panel rounded-2xl p-6 flex items-center justify-around relative">
+            <div class="absolute top-4 left-0 w-full text-center text-[10px] text-gray-500 font-sci-fi">PIPELINE VISUALIZATION</div>
+            
+            <div class="flex flex-col items-center mt-8">
+                <div class="mini-channel" id="channel-pending"></div>
+                <div class="mt-3 font-sci-fi text-emerald-400 text-sm font-bold">PENDING QUEUE</div>
+                <div class="text-[10px] text-gray-500">向右推挤排队中</div>
+            </div>
+
+            <div class="flex flex-col items-center text-cyan-500 text-2xl font-bold">▶</div>
+
+            <div class="flex flex-col items-center mt-8">
+                <div class="mini-channel process-channel" id="channel-processing"></div>
+                <div class="mt-3 font-sci-fi text-cyan-400 text-sm font-bold">PROCESSING</div>
+                <div class="text-[10px] text-gray-500">正在处理 (原FRONT)</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗通知 -->
+    <div id="toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg border bg-black/80 backdrop-blur-md font-sci-fi text-sm font-bold z-50 transition-all duration-300 opacity-0 pointer-events-none"></div>
+
+    <script>
+        const toastEl = document.getElementById('toast');
+        const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+        function showToast(msg, type='error') {
+            toastEl.innerHTML = msg;
+            toastEl.className = `fixed bottom-10 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg border font-sci-fi text-sm font-bold z-50 transition-all duration-300 pointer-events-none ${
+                type === 'error' ? 'bg-red-900/80 border-red-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.5)]' : 'bg-emerald-900/80 border-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.5)]'
+            }`;
+            toastEl.style.opacity = '1'; toastEl.style.transform = 'translate(-50%, -10px)';
+            setTimeout(() => { toastEl.style.opacity = '0'; toastEl.style.transform = 'translate(-50%, 0)'; }, 2500);
+        }
+
+        function switchView(view) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`tab-${view}`).classList.add('active');
+            
+            document.getElementById('view-core').classList.add('hidden');
+            document.getElementById('view-arch').classList.add('hidden');
+            document.getElementById('view-app').classList.add('hidden');
+            
+            document.getElementById(`view-${view}`).classList.remove('hidden');
+            if(view === 'core') document.getElementById(`view-${view}`).style.display = 'grid';
+            else document.getElementById(`view-${view}`).style.display = '';
+        }
+
+        // ==========================================
+        // 视图 1：CORE ENGINE (左进右出管线逻辑)
+        // ==========================================
+        const MAX_CAPACITY = 6;
+        const NODE_WIDTH = 80;
+        const NODE_MARGIN = 4;
+        
+        let queueArray = [];
+        let isAnimating = false;
+
+        const channel = document.getElementById('channel');
+        const ptrFront = document.getElementById('ptr-front');
+        const ptrRear = document.getElementById('ptr-rear');
+        const codeLog = document.getElementById('code-log');
+        const lblCount = document.getElementById('lbl-count');
+        const inpEnqueue = document.getElementById('inp-enqueue');
+
+        function addLog(msg, color='text-gray-300') {
+            const div = document.createElement('div');
+            div.innerHTML = `<span class="text-yellow-500">></span> <span class="${color}">${msg}</span>`;
+            codeLog.appendChild(div); codeLog.scrollTop = codeLog.scrollHeight;
+        }
+
+        function calcXPos(index) { return index * (NODE_WIDTH + NODE_MARGIN) + 4; }
+
+        function updatePointers() {
+            if (queueArray.length === 0) {
+                ptrFront.style.opacity = '0'; 
+                ptrRear.style.opacity = '0'; 
+            } else {
+                ptrRear.style.opacity = '1';
+                ptrRear.style.left = `${calcXPos(0) + NODE_WIDTH / 2}px`;
+                ptrRear.style.transform = 'translateX(-50%) translateY(-30px)';
+                
+                ptrFront.style.opacity = '1';
+                ptrFront.style.left = `${calcXPos(queueArray.length - 1) + NODE_WIDTH / 2}px`;
+                ptrFront.style.transform = 'translateX(-50%) translateY(-30px)';
+            }
+            lblCount.innerText = queueArray.length;
+            lblCount.className = queueArray.length === MAX_CAPACITY ? "text-red-400" : "text-yellow-400";
+        }
+
+        async function handleEnqueue() {
+            if (isAnimating) return;
+            if (queueArray.length >= MAX_CAPACITY) {
+                showToast('FATAL ERROR: PIPELINE OVERFLOW! (管线拥堵爆满)', 'error');
+                addLog('ERROR: Cannot enqueue. Pipeline Overflow.', 'text-red-400');
+                channel.style.transform = 'translateX(5px)'; await sleep(50); channel.style.transform = 'translateX(-5px)'; await sleep(50); channel.style.transform = 'translateX(0)';
+                return;
+            }
+
+            isAnimating = true;
+            const val = inpEnqueue.value || Math.floor(Math.random() * 99);
+            const id = 'node-' + Date.now();
+
+            addLog(`Executing enqueue(${val}). Pushing from Left (REAR)...`, 'text-emerald-400');
+            
+            queueArray.forEach((item, idx) => {
+                const existingNode = document.getElementById(item.id);
+                existingNode.style.left = `${calcXPos(idx + 1)}px`;
+            });
+            
+            const node = document.createElement('div');
+            node.className = 'queue-node node-enter'; 
+            node.id = id; 
+            node.innerText = val;
+            node.style.left = `${calcXPos(0)}px`; 
+            channel.appendChild(node);
+
+            await sleep(50);
+            node.style.transform = `translateX(0) scale(1)`; 
+            node.style.opacity = '1';
+            await sleep(400);
+
+            queueArray.unshift({ id, val });
+            updatePointers();
+            addLog(`Enqueue complete. New REAR is ${val}.`);
+            inpEnqueue.value = Math.floor(Math.random() * 99);
+            isAnimating = false;
+        }
+
+        async function handleDequeue() {
+            if (isAnimating) return;
+            if (queueArray.length === 0) {
+                showToast('ERROR: PIPELINE EMPTY! (管线中无数据)', 'error');
+                addLog('ERROR: Cannot dequeue. Queue is empty.', 'text-red-400');
+                return;
+            }
+
+            isAnimating = true;
+            const frontItem = queueArray[queueArray.length - 1]; 
+            addLog(`Executing dequeue(). Removing from Right (FRONT): ${frontItem.val}...`, 'text-cyan-400');
+
+            const node = document.getElementById(frontItem.id);
+            node.classList.add('node-exit'); 
+
+            queueArray.pop(); 
+            updatePointers();
+
+            await sleep(400);
+            node.remove();
+            
+            addLog(`Dequeue complete. Returned ${frontItem.val}.`);
+            isAnimating = false;
+        }
+
+        async function handlePeek() {
+            if (isAnimating) return;
+            if (queueArray.length === 0) { addLog('Peek: Pipeline is empty. Return NULL.', 'text-gray-500'); return; }
+
+            isAnimating = true;
+            const frontItem = queueArray[queueArray.length - 1];
+            addLog(`Executing peek()...`, 'text-cyan-400');
+
+            const node = document.getElementById(frontItem.id);
+            node.classList.add('node-peek');
+            await sleep(600); node.classList.remove('node-peek');
+            
+            addLog(`Peek complete. Front value is ${frontItem.val}.`);
+            isAnimating = false;
+        }
+
+        async function resetQueue() {
+            if (isAnimating) return;
+            isAnimating = true;
+            addLog('INITIATING FLUSH SEQUENCE...', 'text-red-500 font-bold');
+            for(let i = 0; i < queueArray.length; i++) {
+                const node = document.getElementById(queueArray[i].id);
+                node.style.borderColor = '#ef4444'; node.style.color = '#ef4444'; node.style.boxShadow = '0 0 20px #ef4444';
+                node.classList.add('node-exit');
+            }
+            await sleep(400);
+            queueArray.forEach(item => document.getElementById(item.id).remove());
+            queueArray = []; updatePointers();
+            addLog('PIPELINE FLUSHED. READY.', 'text-emerald-400');
+            isAnimating = false;
+        }
+
+        // ==========================================
+        // 🚀 视图 2：ARCHITECTURE (底层原理展示) 🚀
+        // 全面重构：独立的状态机管理 Array、LL 和 Dual Stack
+        // ==========================================
+        let archCount = 0;
+        let archFront = 0;
+        let archRear = 0;
+        let archStackIn = [];
+        let archStackOut = [];
+        let isArchAnimating = false;
+
+        async function simulateArchEnqueue() {
+            if(isArchAnimating) return;
+            if(archCount >= 5) {
+                showToast("Architecture Queues are Full!", "error");
+                return;
+            }
+            isArchAnimating = true;
+            const val = Math.floor(Math.random() * 90) + 10;
+
+            // 1. Array (Ring Buffer)
+            const slotIdx = archRear % 5;
+            const slots = document.querySelectorAll('.arch-slot');
+            slots[slotIdx].innerText = val;
+            slots[slotIdx].classList.add('filled');
+            document.getElementById('arch-arr-rear-ptr').style.left = `${27 + (slotIdx * 46)}px`;
+            document.getElementById('arch-arr-rear-ptr').style.opacity = '1';
+            document.getElementById('arr-rear-label').innerText = `REAR [${slotIdx}]`;
+            
+            // 保证 FRONT 指针可见
+            const ptrArrFront = document.getElementById('arch-arr-front-ptr');
+            if (ptrArrFront.style.opacity === '0' || ptrArrFront.style.opacity === '') {
+                ptrArrFront.style.opacity = '1';
+                ptrArrFront.style.left = `${27 + ((archFront % 5) * 46)}px`;
+                document.getElementById('arr-front-label').innerText = `FRONT [${archFront % 5}]`;
+            }
+
+            // 2. Linked List
+            const llBox = document.getElementById('arch-ll');
+            const offsetY = (Math.random() > 0.5 ? 1 : -1) * (Math.floor(Math.random() * 10) + 2); 
+            document.querySelectorAll('.ll-rear-badge').forEach(el => el.remove());
+            
+            const newNodeHtml = `
+                <div class="ll-arch-node fade-in" id="ll-node-arch-${archRear}" style="transform: translateY(${offsetY}px)">
+                    <div class="absolute -top-8 left-1/2 -translate-x-1/2 text-emerald-400 text-[9px] font-bold ll-rear-badge flex flex-col items-center">REAR<br>▼</div>
+                    <div class="ll-val">${val}</div>
+                    <div class="ll-ptr">●</div>
+                    <div class="ll-arrow">→</div>
+                </div>
+            `;
+            const nullBadge = document.getElementById('ll-null');
+            nullBadge.insertAdjacentHTML('beforebegin', newNodeHtml); 
+
+            // 3. Dual Stack (双栈模拟)
+            archStackIn.push(val);
+            const nodeIn = document.createElement('div');
+            nodeIn.className = 'silo-node fade-in';
+            nodeIn.innerText = val;
+            nodeIn.style.bottom = `${(archStackIn.length - 1) * 26 + 2}px`;
+            document.getElementById('arch-silo-in').appendChild(nodeIn);
+
+            archRear++;
+            archCount++;
+            isArchAnimating = false;
+        }
+
+        async function simulateArchDequeue() {
+            if(isArchAnimating) return;
+            if(archCount <= 0) {
+                showToast("Architecture Queues are Empty!", "error");
+                return;
+            }
+            isArchAnimating = true;
+
+            // 1. Array (Ring Buffer)
+            const slotIdx = archFront % 5;
+            const slots = document.querySelectorAll('.arch-slot');
+            slots[slotIdx].classList.remove('filled');
+            slots[slotIdx].innerText = '';
+            
+            archFront++;
+            const newFrontIdx = archFront % 5;
+            document.getElementById('arch-arr-front-ptr').style.left = `${27 + (newFrontIdx * 46)}px`;
+            document.getElementById('arr-front-label').innerText = `FRONT [${newFrontIdx}]`;
+
+            // 2. Linked List
+            const llBox = document.getElementById('arch-ll');
+            const firstNode = llBox.querySelector('.ll-arch-node');
+            if (firstNode) {
+                firstNode.style.width = '0px';
+                firstNode.style.marginRight = '0px';
+                firstNode.style.opacity = '0';
+                firstNode.style.border = 'none';
+                setTimeout(() => { if(firstNode.parentNode) firstNode.remove(); }, 300);
+            }
+
+            // 3. Dual Stack (重点：倒水动画)
+            if(archStackOut.length === 0) {
+                showToast("OUT栈为空，从IN栈导入数据 (顺序反转)！", "success");
+                while(archStackIn.length > 0) {
+                    let v = archStackIn.pop();
+                    archStackOut.push(v);
+                    
+                    let inSilo = document.getElementById('arch-silo-in');
+                    let outSilo = document.getElementById('arch-silo-out');
+                    
+                    if (inSilo.lastChild) inSilo.removeChild(inSilo.lastChild);
+                    
+                    let n = document.createElement('div');
+                    n.className = 'silo-node out-node fade-in';
+                    n.innerText = v;
+                    n.style.bottom = `${(archStackOut.length - 1) * 26 + 2}px`;
+                    outSilo.appendChild(n);
+                    
+                    await sleep(250);
+                }
+                await sleep(300);
+            }
+            
+            archStackOut.pop();
+            let outSilo = document.getElementById('arch-silo-out');
+            if(outSilo.lastChild) {
+                outSilo.lastChild.classList.add('arch-node-exit');
+                setTimeout(() => { if(outSilo.contains(outSilo.lastChild)) outSilo.removeChild(outSilo.lastChild); }, 400);
+            }
+
+            archCount--;
+            // 如果空了，隐藏 Array 指针避免视觉错乱
+            if (archCount === 0) {
+                document.getElementById('arch-arr-front-ptr').style.opacity = '0';
+                document.getElementById('arch-arr-rear-ptr').style.opacity = '0';
+            }
+            
+            isArchAnimating = false;
+        }
+
+        // ==========================================
+        // 视图 3：任务调度 (应用层 Task Scheduler)
+        // ==========================================
+        let taskQueue = []; 
+        let processingTask = null;
+
+        const taskInput = document.getElementById('app-task-input');
+        const channelPending = document.getElementById('channel-pending');
+        const channelProcessing = document.getElementById('channel-processing');
+        const btnAddTask = document.getElementById('btn-addTask');
+        const btnProcessTask = document.getElementById('btn-processTask');
+
+        function updateAppUI() {
+            btnProcessTask.disabled = (taskQueue.length === 0);
+            btnAddTask.disabled = (taskQueue.length >= 4); 
+
+            channelPending.innerHTML = '';
+            taskQueue.forEach((task, i) => {
+                const node = document.createElement('div');
+                node.className = 'mini-node'; node.innerText = task.substring(0, 6) + '...';
+                node.style.left = `${i * 64 + 2}px`; 
+                channelPending.appendChild(node);
+            });
+
+            channelProcessing.innerHTML = '';
+            if (processingTask) {
+                const node = document.createElement('div');
+                node.className = 'mini-node process-node'; node.innerText = processingTask.substring(0, 6) + '...';
+                node.style.left = '2px'; channelProcessing.appendChild(node);
+            }
+        }
+
+        async function appAddTask(taskName) {
+            if (!taskName || taskName.trim() === '') { showToast("Task name cannot be empty!", "error"); return; }
+            if (taskQueue.length >= 4) { showToast("Task queue is full!", "error"); return; }
+            
+            taskQueue.unshift(taskName);
+            taskInput.value = '';
+            updateAppUI();
+            showToast(`Task enqueued to REAR.`, "success");
+        }
+
+        async function appProcessTask() {
+            if (taskQueue.length === 0) { showToast("No tasks in queue!", "error"); return; }
+            processingTask = taskQueue.pop();
+            updateAppUI();
+            
+            showToast(`Dequeue from FRONT...`, "success");
+            await sleep(1500); 
+            processingTask = null;
+            updateAppUI();
+            showToast("Task completed.", "success");
+        }
+
+        // --- 预加载 ---
+        window.onload = async () => {
+            document.getElementById('view-core').style.display = 'grid';
+            await sleep(300);
+            inpEnqueue.value = 10; await handleEnqueue();
+            inpEnqueue.value = 20; await handleEnqueue();
+            inpEnqueue.value = 30; await handleEnqueue();
+        };
+
+    </script>
+</body>
+</html>
