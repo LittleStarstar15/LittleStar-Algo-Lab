@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星华大学：量子哈希映射器 (Hash Table)</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Google Fonts 科幻字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Noto+Sans+SC:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        /* 宇宙深空黑背景 */
+        body {
+            background-color: #03050a;
+            font-family: 'Noto Sans SC', sans-serif;
+            color: #e2e8f0;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 80% 20%, rgba(245, 158, 11, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 20% 80%, rgba(139, 92, 246, 0.08) 0%, transparent 40%),
+                linear-gradient(to bottom, transparent, rgba(0,0,0,0.8));
+        }
+
+        .font-sci-fi { font-family: 'Orbitron', sans-serif; }
+
+        .glass-panel {
+            background: rgba(11, 15, 25, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            box-shadow: 0 0 30px rgba(245, 158, 11, 0.05);
+        }
+
+        /* 标签切换按钮 */
+        .tab-btn { transition: all 0.3s ease; border-bottom: 2px solid transparent; white-space: nowrap; }
+        .tab-btn.active { color: #f59e0b; border-bottom-color: #f59e0b; text-shadow: 0 0 8px rgba(245, 158, 11, 0.6); font-weight: bold; }
+
+        /* 哈希函数引擎核心动画区 */
+        .hash-engine {
+            width: 100%; height: 120px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 2px dashed rgba(139, 92, 246, 0.5);
+            border-radius: 12px;
+            display: flex; flex-direction: column; items-center justify-center;
+            position: relative; overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(139, 92, 246, 0.1);
+            transition: all 0.3s;
+        }
+        .hash-engine.processing {
+            border-color: #a855f7; border-style: solid;
+            box-shadow: 0 0 30px rgba(168, 85, 247, 0.4), inset 0 0 30px rgba(168, 85, 247, 0.2);
+        }
+        
+        .scan-line {
+            position: absolute; top: 0; left: -100%; width: 50%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(168, 85, 247, 0.4), transparent);
+            transform: skewX(-20deg); pointer-events: none;
+        }
+        .hash-engine.processing .scan-line { animation: scan 0.8s ease-in-out infinite; }
+        @keyframes scan { 0% { left: -100%; } 100% { left: 200%; } }
+
+        /* 哈希表桶 (Buckets) */
+        .bucket-row {
+            display: flex; align-items: center; min-height: 56px; margin-bottom: 8px;
+            background: rgba(0, 0, 0, 0.4); border-radius: 8px;
+            padding: 4px; position: relative;
+        }
+        
+        .bucket-index {
+            width: 48px; height: 48px; flex-shrink: 0;
+            background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(245, 158, 11, 0.4);
+            border-radius: 6px; display: flex; align-items: center; justify-content: center;
+            font-family: 'Orbitron', monospace; font-size: 18px; font-weight: bold; color: #f59e0b;
+            box-shadow: inset 0 0 10px rgba(245, 158, 11, 0.1); z-index: 10;
+        }
+        
+        .bucket-index.highlight {
+            background: rgba(245, 158, 11, 0.2); border-color: #f59e0b; color: #FFF;
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.6), inset 0 0 10px rgba(245, 158, 11, 0.4);
+            transform: scale(1.1);
+        }
+
+        .bucket-content {
+            display: flex; align-items: center; flex-1; overflow-x: auto; padding-left: 12px;
+        }
+
+        /* 数据节点 (键值对) */
+        .kv-node {
+            display: flex; align-items: center; height: 40px; flex-shrink: 0;
+            background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(16, 185, 129, 0.5);
+            border-radius: 6px; overflow: hidden; font-family: 'Orbitron', monospace;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.2); transition: all 0.3s;
+            animation: slideInRight 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .kv-node.search-match {
+            border-color: #00F0FF; box-shadow: 0 0 25px #00F0FF; transform: scale(1.05) translateY(-2px);
+        }
+        .kv-node.deleting {
+            transform: scale(0); opacity: 0; transition: all 0.3s;
+        }
+
+        @keyframes slideInRight { from { opacity: 0; transform: translateX(50px) scale(0.8); } to { opacity: 1; transform: translateX(0) scale(1); } }
+
+        .kv-key { padding: 0 12px; background: rgba(16, 185, 129, 0.2); color: #10b981; font-weight: bold; height: 100%; display: flex; align-items: center; }
+        .kv-val { padding: 0 12px; color: #e2e8f0; border-left: 1px dashed rgba(16, 185, 129, 0.3); height: 100%; display: flex; align-items: center; }
+        
+        .chain-arrow {
+            color: rgba(16, 185, 129, 0.6); font-weight: bold; margin: 0 8px; font-size: 16px;
+            animation: fadeIn 0.4s ease-in;
+        }
+
+        /* 动画与细节 */
+        .fade-in { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* 控制台与滚动条 */
+        .math-board { background: rgba(0, 0, 0, 0.6); border: 1px dashed rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 12px; font-family: 'Orbitron', monospace; }
+        button { transition: all 0.2s; }
+        button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 0 15px rgba(245, 158, 11, 0.4); }
+        button:active:not(:disabled) { transform: translateY(1px); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+        
+        .control-input { background: rgba(0,0,0,0.6); border: 1px solid rgba(245, 158, 11, 0.3); color: #f59e0b; text-align: center; border-radius: 4px; padding: 8px; width: 100%; outline: none; font-family: 'Orbitron'; transition: border-color 0.3s; }
+        .control-input:focus { border-color: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.5); }
+        
+        .cyber-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+        .cyber-scroll::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.3); border-radius: 3px; }
+        .cyber-scroll::-webkit-scrollbar-thumb { background: rgba(245, 158, 11, 0.4); border-radius: 3px; }
+        .cyber-scroll::-webkit-scrollbar-thumb:hover { background: rgba(245, 158, 11, 0.8); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4 md:p-6 pt-16 md:pt-6">
+
+    <!-- 🚀 返回主菜单按钮 -->
+    <a href="../../index.html" class="fixed top-4 left-4 md:top-6 md:left-6 z-50 flex items-center justify-center gap-2 px-3 py-2 md:px-4 md:py-2 rounded border border-cyan-500/30 bg-black/60 backdrop-blur-md text-cyan-500/70 hover:text-cyan-300 hover:border-cyan-400 hover:shadow-[0_0_15px_rgba(0,240,255,0.4)] transition-all group text-decoration-none">
+        <svg class="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        <span class="hidden md:inline tracking-wider font-sci-fi text-xs md:text-sm pt-[2px] leading-none">MAIN TERMINAL</span>
+    </a>
+
+    <!-- 顶部标题 -->
+    <div class="text-center mb-6 mt-4 md:mt-0 w-full">
+        <h1 class="text-3xl md:text-4xl font-sci-fi font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-purple-500 mb-2 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">
+            量子哈希映射器：散列表 (HASH TABLE)
+        </h1>
+        <p class="text-amber-400/60 text-sm tracking-widest font-sci-fi">O(1) INSTANT DATA RETRIEVAL ENGINE</p>
+    </div>
+
+    <!-- 理论铺垫区 -->
+    <div class="w-full max-w-6xl glass-panel rounded-2xl p-6 md:p-8 mb-6 flex flex-col md:flex-row gap-8 items-center border-l-4 border-l-amber-500">
+        <div class="flex-1">
+            <h2 class="text-xl font-bold text-white mb-3">极致的速度魔法：<span class="text-amber-400">时间复杂度 O(1) 的秘密</span>。</h2>
+            <p class="text-gray-400 text-sm leading-relaxed mb-2">
+                如果在一个有 100 万个元素的数组里找一个人的名字，你需要从头遍历到尾（O(N)）。但哈希表做到了瞬间定位。
+            </p>
+            <p class="text-gray-400 text-sm leading-relaxed">
+                它的魔法在于 <strong class="text-purple-400 font-sci-fi">哈希函数 (Hash Function)</strong>：它像一个粉碎机，把你输入的 Key（比如字符串 "Alien"）直接通过数学公式算成一个数字（比如 5）。然后系统直接去内存的第 5 号储物柜提取数据。无需遍历，一步到位！
+            </p>
+        </div>
+    </div>
+
+    <!-- 场景切换 Tabs -->
+    <div class="flex gap-4 md:gap-8 mb-6 border-b border-gray-800 w-full max-w-6xl px-4 overflow-x-auto pb-1">
+        <button id="tab-core" class="tab-btn active pb-3 font-sci-fi text-gray-400 hover:text-gray-200" onclick="switchView('core')">
+            [1] CORE ENGINE (哈希散列与冲突)
+        </button>
+        <button id="tab-arch" class="tab-btn pb-3 font-sci-fi text-gray-400 hover:text-gray-200" onclick="switchView('arch')">
+            [2] COLLISION ARCHITECTURE (底层探秘)
+        </button>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 视图 1：基础核心引擎 (Put/Get/Delete)         -->
+    <!-- ========================================== -->
+    <div id="view-core" class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- 左侧：全息哈希桶可视化 -->
+        <div class="lg:col-span-7 glass-panel rounded-2xl p-6 flex flex-col relative overflow-hidden min-h-[600px]">
+            <div class="absolute top-4 left-4 text-[10px] text-amber-500/50 font-sci-fi">HASH BUCKETS ARRAY (CAPACITY: 8)</div>
+            
+            <!-- 顶部哈希函数引擎区域 -->
+            <div class="w-full mt-6 mb-8 flex flex-col items-center">
+                <div class="hash-engine" id="hash-engine-box">
+                    <div class="scan-line"></div>
+                    <div class="text-[10px] text-purple-400 mb-2 font-sci-fi font-bold">f(x) QUANTUM HASH GENERATOR</div>
+                    
+                    <!-- 动态计算公式显示区 -->
+                    <div id="hash-calc-display" class="text-center font-sci-fi text-gray-400 text-sm">
+                        Waiting for data input...
+                    </div>
+                    
+                    <!-- 计算结果大字 -->
+                    <div id="hash-result" class="text-3xl font-bold text-amber-400 mt-2 font-sci-fi opacity-0 transform scale-50 transition-all duration-300">
+                        INDEX: ?
+                    </div>
+                </div>
+                <div class="text-purple-400 text-2xl font-bold mt-2">▼</div>
+            </div>
+
+            <!-- 底层数组 (Buckets) 0-7 -->
+            <div class="flex-1 overflow-y-auto cyber-scroll pr-2 pb-10" id="buckets-container">
+                <!-- 由 JS 动态渲染 -->
+            </div>
+        </div>
+
+        <!-- 右侧：操作控制台 -->
+        <div class="lg:col-span-5 glass-panel rounded-2xl p-6 flex flex-col">
+            <h2 class="text-lg font-bold text-amber-300 font-sci-fi mb-4 border-b border-amber-500/30 pb-2">MAP CONSOLE</h2>
+            
+            <div class="math-board mb-6">
+                <div class="text-[9px] text-amber-500/50 mb-1">EXECUTION LOG</div>
+                <div id="code-log" class="text-xs text-gray-300 space-y-1 h-32 overflow-y-auto cyber-scroll">
+                    <div>> HASH MAP INITIALIZED. BUCKETS: 8.</div>
+                    <div>> COLLISION RESOLUTION: CHAINING (链地址法).</div>
+                    <div>> AWAITING COMMAND...</div>
+                </div>
+            </div>
+
+            <div class="space-y-6 flex-1">
+                <!-- PUT 操作 -->
+                <div class="border-l-2 border-emerald-500 pl-4 bg-black/30 p-3 rounded">
+                    <label class="text-[11px] text-emerald-400 font-sci-fi block mb-2 font-bold">1. PUT(Key, Value) / 写入或更新</label>
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <input type="text" id="inp-key" class="control-input" placeholder="Key (e.g. Alien)">
+                        <input type="text" id="inp-val" class="control-input" placeholder="Value (e.g. 99)">
+                    </div>
+                    <button onclick="handlePut()" class="w-full py-2 rounded border border-emerald-500/50 bg-emerald-900/30 text-emerald-400 text-sm font-bold font-sci-fi">PUT DATA</button>
+                </div>
+
+                <!-- GET / DELETE 操作 -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="border-l-2 border-cyan-500 pl-3">
+                        <label class="text-[10px] text-cyan-400 font-sci-fi block mb-2">2. GET(Key) / 读取</label>
+                        <input type="text" id="inp-search-key" class="control-input mb-2 text-cyan-400 border-cyan-500/30 focus:border-cyan-400" placeholder="Search Key">
+                        <button onclick="handleGet()" class="w-full py-2 rounded border border-cyan-500/50 bg-cyan-900/30 text-cyan-400 text-xs font-bold font-sci-fi">GET VALUE</button>
+                    </div>
+
+                    <div class="border-l-2 border-red-500 pl-3">
+                        <label class="text-[10px] text-red-400 font-sci-fi block mb-2">3. DELETE(Key) / 删除</label>
+                        <input type="text" id="inp-del-key" class="control-input mb-2 text-red-400 border-red-500/30 focus:border-red-400" placeholder="Delete Key">
+                        <button onclick="handleDelete()" class="w-full py-2 rounded border border-red-500/50 bg-red-900/30 text-red-400 text-xs font-bold font-sci-fi">DELETE KV</button>
+                    </div>
+                </div>
+            </div>
+            
+            <button onclick="resetMap()" class="mt-8 w-full py-2 rounded border border-gray-600 bg-black/40 text-gray-400 text-xs font-sci-fi hover:text-white transition-colors">FORMAT DISK (清空全表)</button>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 视图 2：底层探秘 (哈希冲突怎么解)             -->
+    <!-- ========================================== -->
+    <div id="view-arch" class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-6 hidden">
+        <div class="glass-panel rounded-2xl p-6 md:p-8 flex flex-col justify-center">
+            <h2 class="text-2xl font-bold text-red-400 font-sci-fi mb-4">世界级难题：哈希冲突 (Collision)</h2>
+            <p class="text-sm text-gray-400 mb-4 leading-relaxed">
+                想象一下，储物柜只有 8 个（数组长度），但你要存入 100 份数据。或者刚好有两份数据被哈希函数算出了相同的 Index。这种情况叫做<strong class="text-white">哈希冲突</strong>。
+            </p>
+            <p class="text-sm text-gray-400 mb-6 leading-relaxed border-b border-red-500/30 pb-4">
+                解决冲突最经典也是本页沙盘演示的方案叫 <strong class="text-emerald-400">链地址法 (Chaining)</strong>：<br>
+                每个储物柜里不再只放一个包裹，而是挂着一条<strong class="text-purple-400">链表 (Linked List)</strong>。如果抢到了同一个柜子，就顺着链表挂在老数据的后面。查找时，先 O(1) 找到柜子，再顺着链表找具体的人。
+            </p>
+            <button onclick="triggerCollisionDemo()" class="w-full py-4 border border-amber-500 bg-amber-900/30 text-amber-400 font-sci-fi font-bold rounded hover:bg-amber-500 hover:text-black transition-all">
+                ▶ 自动演示：强行制造冲突
+            </button>
+        </div>
+
+        <div class="glass-panel rounded-2xl p-6 md:p-8 flex flex-col justify-center items-center relative overflow-hidden">
+            <div class="text-[10px] text-gray-500 font-sci-fi absolute top-4 left-4">CHAINING VISUALIZATION</div>
+            
+            <!-- 链表冲突微缩模型 -->
+            <div class="flex items-center w-full mt-4">
+                <div class="bucket-index shadow-[0_0_15px_rgba(245,158,11,0.5)]">3</div>
+                <div class="flex-1 flex items-center pl-4 overflow-hidden" id="demo-chain-container">
+                    <div class="kv-node"><div class="kv-key">Apple</div><div class="kv-val">A</div></div>
+                </div>
+            </div>
+            
+            <div class="mt-8 text-xs text-gray-500 font-mono text-center max-w-sm">
+                * 若大量数据堆积在同一个 Index 导致链表过长，查询性能会退化为 O(N)。此时系统会自动触发扩容 (Rehashing)，重建一个更大的表。
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗通知 -->
+    <div id="toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg border bg-black/80 backdrop-blur-md font-sci-fi text-sm font-bold z-50 transition-all duration-300 opacity-0 pointer-events-none"></div>
+
+    <script>
+        // ==========================================
+        // UI 工具
+        // ==========================================
+        const toastEl = document.getElementById('toast');
+        const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+        function showToast(msg, type='error') {
+            toastEl.innerHTML = msg;
+            toastEl.className = `fixed bottom-10 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg border font-sci-fi text-sm font-bold z-50 transition-all duration-300 pointer-events-none ${
+                type === 'error' ? 'bg-red-900/80 border-red-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.5)]' : 'bg-emerald-900/80 border-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.5)]'
+            }`;
+            toastEl.style.opacity = '1'; toastEl.style.transform = 'translate(-50%, -10px)';
+            setTimeout(() => { toastEl.style.opacity = '0'; toastEl.style.transform = 'translate(-50%, 0)'; }, 2500);
+        }
+
+        function switchView(view) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`tab-${view}`).classList.add('active');
+            
+            document.getElementById('view-core').classList.add('hidden');
+            document.getElementById('view-arch').classList.add('hidden');
+            
+            document.getElementById(`view-${view}`).classList.remove('hidden');
+            if(view === 'core') document.getElementById(`view-${view}`).style.display = 'grid';
+            else document.getElementById(`view-${view}`).style.display = 'grid';
+        }
+
+        const codeLog = document.getElementById('code-log');
+        function addLog(msg, color='text-gray-300') {
+            const div = document.createElement('div');
+            div.innerHTML = `<span class="text-amber-500">></span> <span class="${color}">${msg}</span>`;
+            codeLog.appendChild(div); codeLog.scrollTop = codeLog.scrollHeight;
+        }
+
+        // ==========================================
+        // 哈希表核心数据结构 (Array of Arrays 模拟链表)
+        // ==========================================
+        const TABLE_SIZE = 8;
+        let hashTable = Array.from({length: TABLE_SIZE}, () => []);
+        let isAnimating = false;
+
+        const bucketsContainer = document.getElementById('buckets-container');
+        const hashEngineBox = document.getElementById('hash-engine-box');
+        const hashCalcDisplay = document.getElementById('hash-calc-display');
+        const hashResult = document.getElementById('hash-result');
+
+        // 初始化渲染空的 UI
+        function renderEmptyBuckets() {
+            bucketsContainer.innerHTML = '';
+            for(let i=0; i<TABLE_SIZE; i++) {
+                const row = document.createElement('div');
+                row.className = 'bucket-row';
+                row.id = `bucket-row-${i}`;
+                row.innerHTML = `
+                    <div class="bucket-index" id="bucket-idx-${i}">${i}</div>
+                    <div class="bucket-content cyber-scroll" id="bucket-content-${i}"></div>
+                `;
+                bucketsContainer.appendChild(row);
+            }
+        }
+
+        // 核心：简易哈希函数 (ASCII累加取模)
+        function calculateHash(key) {
+            let sum = 0;
+            let processStr = "";
+            const strKey = String(key);
+            
+            // 为了展示视觉效果，只取前3个字符展示公式，避免太长
+            const showLen = Math.min(strKey.length, 3);
+            for(let i=0; i<strKey.length; i++) {
+                const code = strKey.charCodeAt(i);
+                sum += code;
+                if(i < showLen) {
+                    processStr += `"${strKey[i]}"(${code}) + `;
+                }
+            }
+            if(strKey.length > 3) processStr += "... ";
+            else processStr = processStr.slice(0, -2); // 去掉最后的 +
+            
+            const index = sum % TABLE_SIZE;
+            const formulaStr = `${processStr} = ${sum}<br> ${sum} % ${TABLE_SIZE} = <span class="text-white font-bold">${index}</span>`;
+            
+            return { index, formulaStr };
+        }
+
+        // 动画：执行哈希计算过程
+        async function runHashAnimation(key) {
+            hashEngineBox.classList.add('processing');
+            hashResult.style.opacity = '0';
+            hashResult.style.transform = 'scale(0.5)';
+            
+            // 字符打乱特效模拟计算
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+            for(let i=0; i<10; i++) {
+                let randomStr = "";
+                for(let j=0; j<8; j++) randomStr += chars.charAt(Math.floor(Math.random() * chars.length));
+                hashCalcDisplay.innerHTML = `<span class="text-purple-400 font-mono text-lg">${randomStr}</span>`;
+                await sleep(50);
+            }
+
+            const { index, formulaStr } = calculateHash(key);
+            
+            // 显示真实公式
+            hashCalcDisplay.innerHTML = formulaStr;
+            await sleep(300);
+            
+            // 弹出结果
+            hashResult.innerText = `INDEX: ${index}`;
+            hashResult.style.opacity = '1';
+            hashResult.style.transform = 'scale(1)';
+            hashEngineBox.classList.remove('processing');
+            
+            await sleep(600);
+            return index;
+        }
+
+        // 移除高亮
+        function clearHighlights() {
+            document.querySelectorAll('.bucket-index').forEach(el => el.classList.remove('highlight'));
+            document.querySelectorAll('.kv-node').forEach(el => el.classList.remove('search-match'));
+            hashCalcDisplay.innerHTML = 'Waiting for data input...';
+            hashResult.style.opacity = '0';
+        }
+
+        // ==========================================
+        // API：PUT, GET, DELETE
+        // ==========================================
+
+        async function handlePut() {
+            if (isAnimating) return;
+            const keyInput = document.getElementById('inp-key').value.trim();
+            const valInput = document.getElementById('inp-val').value.trim();
+            
+            if (!keyInput) { showToast('Key 不能为空！', 'error'); return; }
+            
+            isAnimating = true;
+            clearHighlights();
+            addLog(`Executing PUT("${keyInput}", "${valInput}")...`, 'text-emerald-400');
+            
+            // 1. 运行哈希函数动画
+            const index = await runHashAnimation(keyInput);
+            
+            // 2. 高亮目标桶
+            const bucketIdxEl = document.getElementById(`bucket-idx-${index}`);
+            bucketIdxEl.classList.add('highlight');
+            await sleep(400);
+
+            const bucketArr = hashTable[index];
+            const contentContainer = document.getElementById(`bucket-content-${index}`);
+            
+            // 3. 检查是否键已存在 (更新操作)
+            let existingIdx = bucketArr.findIndex(item => item.key === keyInput);
+            
+            if (existingIdx !== -1) {
+                // 更新现有值
+                addLog(`Key '${keyInput}' found at Index ${index}. Updating value...`, 'text-yellow-400');
+                bucketArr[existingIdx].val = valInput;
+                
+                // 找到对应的 DOM 节点并更新
+                const existingNode = contentContainer.querySelectorAll('.kv-node')[existingIdx];
+                existingNode.classList.add('search-match');
+                await sleep(300);
+                existingNode.querySelector('.kv-val').innerText = valInput;
+                await sleep(500);
+                existingNode.classList.remove('search-match');
+                
+            } else {
+                // 新增节点 (处理冲突连线)
+                addLog(`Inserting new KV into Index ${index}...`, 'text-emerald-400');
+                bucketArr.push({ key: keyInput, val: valInput });
+                
+                if (bucketArr.length > 1) {
+                    // 发生了冲突，添加箭头
+                    const arrow = document.createElement('div');
+                    arrow.className = 'chain-arrow';
+                    arrow.innerText = '→';
+                    contentContainer.appendChild(arrow);
+                }
+                
+                // 添加新节点 DOM
+                const newNode = document.createElement('div');
+                newNode.className = 'kv-node';
+                newNode.innerHTML = `<div class="kv-key">${keyInput}</div><div class="kv-val">${valInput}</div>`;
+                contentContainer.appendChild(newNode);
+            }
+
+            // 清理
+            document.getElementById('inp-key').value = '';
+            document.getElementById('inp-val').value = '';
+            bucketIdxEl.classList.remove('highlight');
+            addLog(`PUT complete.`, 'text-gray-400');
+            isAnimating = false;
+        }
+
+        async function handleGet() {
+            if (isAnimating) return;
+            const keyInput = document.getElementById('inp-search-key').value.trim();
+            if (!keyInput) { showToast('请输入要查找的 Key！', 'error'); return; }
+
+            isAnimating = true;
+            clearHighlights();
+            addLog(`Executing GET("${keyInput}")...`, 'text-cyan-400');
+
+            // 1. O(1) 计算哈希直达桶
+            const index = await runHashAnimation(keyInput);
+            const bucketIdxEl = document.getElementById(`bucket-idx-${index}`);
+            bucketIdxEl.classList.add('highlight');
+            
+            addLog(`Calculated Index is ${index}. Jumping directly to bucket...`, 'text-cyan-400');
+            await sleep(500);
+
+            // 2. 遍历链表寻找匹配项
+            const bucketArr = hashTable[index];
+            const contentContainer = document.getElementById(`bucket-content-${index}`);
+            const nodeElements = contentContainer.querySelectorAll('.kv-node');
+            
+            let found = false;
+            for(let i = 0; i < bucketArr.length; i++) {
+                // 视觉上遍历
+                nodeElements[i].style.borderColor = 'rgba(245, 158, 11, 0.8)';
+                await sleep(400);
+                
+                if (bucketArr[i].key === keyInput) {
+                    nodeElements[i].classList.add('search-match');
+                    nodeElements[i].style.borderColor = '';
+                    addLog(`FOUND! Value is '${bucketArr[i].val}'.`, 'text-emerald-400 font-bold');
+                    showToast(`找到了！Value: ${bucketArr[i].val}`, 'success');
+                    found = true;
+                    break;
+                } else {
+                    nodeElements[i].style.borderColor = ''; // 恢复
+                }
+            }
+
+            if (!found) {
+                addLog(`Not Found. Key '${keyInput}' does not exist.`, 'text-red-400');
+                showToast('Key 不存在！', 'error');
+            }
+
+            await sleep(1000);
+            bucketIdxEl.classList.remove('highlight');
+            nodeElements.forEach(el => el.classList.remove('search-match'));
+            isAnimating = false;
+        }
+
+        async function handleDelete() {
+            if (isAnimating) return;
+            const keyInput = document.getElementById('inp-del-key').value.trim();
+            if (!keyInput) { showToast('请输入要删除的 Key！', 'error'); return; }
+
+            isAnimating = true;
+            clearHighlights();
+            addLog(`Executing DELETE("${keyInput}")...`, 'text-red-400');
+
+            const index = await runHashAnimation(keyInput);
+            const bucketIdxEl = document.getElementById(`bucket-idx-${index}`);
+            bucketIdxEl.classList.add('highlight');
+            await sleep(500);
+
+            const bucketArr = hashTable[index];
+            const existingIdx = bucketArr.findIndex(item => item.key === keyInput);
+
+            if (existingIdx !== -1) {
+                addLog(`Key found. Initiating deletion...`, 'text-red-400');
+                const contentContainer = document.getElementById(`bucket-content-${index}`);
+                const nodeElements = contentContainer.querySelectorAll('.kv-node');
+                const targetNode = nodeElements[existingIdx];
+                
+                targetNode.classList.add('deleting'); // 缩放消失动画
+                await sleep(400);
+                
+                // 更新底层数据并重绘该行的 DOM (处理箭头等比较麻烦，直接重绘该行最稳妥)
+                bucketArr.splice(existingIdx, 1);
+                redrawBucketRow(index);
+                
+                addLog(`Deletion successful.`, 'text-gray-400');
+                showToast('删除成功', 'success');
+            } else {
+                addLog(`Deletion failed. Key '${keyInput}' not found.`, 'text-gray-500');
+                showToast('Key 不存在，无法删除', 'error');
+            }
+
+            await sleep(500);
+            bucketIdxEl.classList.remove('highlight');
+            document.getElementById('inp-del-key').value = '';
+            isAnimating = false;
+        }
+
+        // 辅助函数：根据数组数据重新渲染单行桶内容（用于删除后清理连线）
+        function redrawBucketRow(index) {
+            const contentContainer = document.getElementById(`bucket-content-${index}`);
+            contentContainer.innerHTML = '';
+            const arr = hashTable[index];
+            
+            arr.forEach((item, i) => {
+                if (i > 0) {
+                    const arrow = document.createElement('div');
+                    arrow.className = 'chain-arrow';
+                    arrow.innerText = '→';
+                    contentContainer.appendChild(arrow);
+                }
+                const newNode = document.createElement('div');
+                newNode.className = 'kv-node';
+                newNode.style.animation = 'none'; // 重绘不播放滑入动画
+                newNode.innerHTML = `<div class="kv-key">${item.key}</div><div class="kv-val">${item.val}</div>`;
+                contentContainer.appendChild(newNode);
+            });
+        }
+
+        function resetMap() {
+            if (isAnimating) return;
+            hashTable = Array.from({length: TABLE_SIZE}, () => []);
+            renderEmptyBuckets();
+            clearHighlights();
+            addLog('DISK FORMATTED. Hash Map is empty.', 'text-amber-400 font-bold');
+        }
+
+        // ==========================================
+        // 视图 2：冲突演示脚本
+        // ==========================================
+        async function triggerCollisionDemo() {
+            const container = document.getElementById('demo-chain-container');
+            if(container.children.length > 5) {
+                container.innerHTML = '<div class="kv-node"><div class="kv-key">Apple</div><div class="kv-val">A</div></div>';
+                return;
+            }
+            
+            const randomKeys = ["Banana", "Cat", "Dog", "Echo", "Fox"];
+            const char = randomKeys[Math.floor(Math.random()*randomKeys.length)];
+            
+            const arrow = document.createElement('div');
+            arrow.className = 'chain-arrow';
+            arrow.innerText = '→';
+            container.appendChild(arrow);
+            
+            const newNode = document.createElement('div');
+            newNode.className = 'kv-node';
+            newNode.innerHTML = `<div class="kv-key">${char}</div><div class="kv-val">X</div>`;
+            container.appendChild(newNode);
+        }
+
+        // --- 预加载 ---
+        window.onload = async () => {
+            renderEmptyBuckets();
+            document.getElementById('view-core').style.display = 'grid';
+            
+            // 预设一些数据让界面不那么空
+            await sleep(500);
+            document.getElementById('inp-key').value = "Neo";
+            document.getElementById('inp-val').value = "The One";
+            await handlePut();
+        };
+
+    </script>
+</body>
+</html>

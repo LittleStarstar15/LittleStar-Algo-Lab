@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星华大学：量子决策网络 (二叉树)</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Google Fonts 科幻字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Noto+Sans+SC:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        /* 宇宙深空网络背景 */
+        body {
+            background-color: #03050a;
+            font-family: 'Noto Sans SC', sans-serif;
+            color: #e2e8f0;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(16, 185, 129, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(0, 240, 255, 0.08) 0%, transparent 50%),
+                linear-gradient(to bottom, transparent, rgba(0,0,0,0.8));
+        }
+
+        .font-sci-fi { font-family: 'Orbitron', sans-serif; }
+
+        .glass-panel {
+            background: rgba(11, 15, 25, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.05);
+        }
+
+        /* 标签切换 */
+        .tab-btn { transition: all 0.3s ease; border-bottom: 2px solid transparent; white-space: nowrap; }
+        .tab-btn.active { color: #10b981; border-bottom-color: #10b981; text-shadow: 0 0 8px rgba(16, 185, 129, 0.6); font-weight: bold; }
+
+        /* 树节点与连线核心架构 */
+        #tree-canvas {
+            position: relative; width: 100%; height: 460px;
+            background: rgba(0, 0, 0, 0.4); border-radius: 8px;
+            border: 1px dashed rgba(16, 185, 129, 0.3); overflow: hidden;
+            box-shadow: inset 0 0 30px rgba(16, 185, 129, 0.05);
+        }
+
+        .tree-node {
+            position: absolute;
+            width: 40px; height: 40px;
+            background: rgba(15, 23, 42, 0.9);
+            border: 2px solid #00F0FF;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Orbitron', monospace; font-size: 14px; font-weight: bold; color: #00F0FF;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3), inset 0 0 10px rgba(0, 240, 255, 0.2);
+            transform: translate(-50%, -50%); /* 确保 x,y 坐标是圆心 */
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 20;
+        }
+
+        /* 节点状态特效 */
+        .node-new {
+            animation: spawnNode 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        @keyframes spawnNode {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; box-shadow: 0 0 50px #FFF; background: #FFF; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+
+        .node-active {
+            background: rgba(245, 158, 11, 0.3) !important;
+            border-color: #f59e0b !important; color: #FFF !important;
+            box-shadow: 0 0 25px #f59e0b !important; transform: translate(-50%, -50%) scale(1.2);
+            z-index: 30;
+        }
+
+        .node-found {
+            background: rgba(16, 185, 129, 0.4) !important;
+            border-color: #10b981 !important; color: #FFF !important;
+            box-shadow: 0 0 30px #10b981 !important; transform: translate(-50%, -50%) scale(1.3);
+            z-index: 30;
+        }
+
+        .node-traverse {
+            background: rgba(217, 70, 239, 0.3) !important;
+            border-color: #d946ef !important; color: #FFF !important;
+            box-shadow: 0 0 20px #d946ef !important; transform: translate(-50%, -50%) scale(1.15);
+            z-index: 30;
+        }
+
+        /* SVG 连线层 */
+        #svg-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;
+        }
+        .tree-edge {
+            stroke: rgba(0, 240, 255, 0.3); stroke-width: 2; fill: none; transition: all 0.4s;
+        }
+        .edge-active {
+            stroke: #f59e0b; stroke-width: 4; filter: drop-shadow(0 0 5px #f59e0b);
+        }
+        .edge-traverse {
+            stroke: #d946ef; stroke-width: 4; filter: drop-shadow(0 0 5px #d946ef);
+        }
+
+        /* 数学面板 */
+        .math-board { background: rgba(0, 0, 0, 0.6); border: 1px dashed rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 12px; font-family: 'Orbitron', monospace; }
+        
+        /* 控件样式 */
+        button { transition: all 0.2s; }
+        button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); }
+        button:active:not(:disabled) { transform: translateY(1px); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+        
+        .control-input { background: rgba(0,0,0,0.6); border: 1px solid rgba(16, 185, 129, 0.3); color: #10b981; text-align: center; border-radius: 4px; padding: 4px; width: 80px; outline: none; font-family: 'Orbitron'; }
+        .control-input:focus { border-color: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.5); }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; } input[type=number] { -moz-appearance: textfield; }
+
+        /* 滚动条 */
+        .cyber-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+        .cyber-scroll::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.3); border-radius: 3px; }
+        .cyber-scroll::-webkit-scrollbar-thumb { background: rgba(16, 185, 129, 0.4); border-radius: 3px; }
+        .cyber-scroll::-webkit-scrollbar-thumb:hover { background: rgba(16, 185, 129, 0.8); }
+
+        /* 遍历结果块 */
+        .traverse-item {
+            display: inline-block; padding: 4px 8px; background: rgba(217, 70, 239, 0.1); border: 1px solid rgba(217, 70, 239, 0.4);
+            color: #d946ef; font-family: 'Orbitron'; font-size: 14px; font-weight: bold; border-radius: 4px; margin: 4px;
+            animation: popIn 0.3s ease-out forwards; opacity: 0; transform: scale(0.5);
+        }
+        @keyframes popIn { to { opacity: 1; transform: scale(1); } }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4 md:p-6 pt-16 md:pt-6" onresize="renderTree()">
+
+    <!-- 🚀 返回主菜单按钮 🚀 -->
+    <a href="../../index.html" class="fixed top-4 left-4 md:top-6 md:left-6 z-50 flex items-center justify-center gap-2 px-3 py-2 md:px-4 md:py-2 rounded border border-cyan-500/30 bg-black/60 backdrop-blur-md text-cyan-500/70 hover:text-cyan-300 hover:border-cyan-400 hover:shadow-[0_0_15px_rgba(0,240,255,0.4)] transition-all group text-decoration-none">
+        <svg class="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        <span class="hidden md:inline tracking-wider font-sci-fi text-xs md:text-sm pt-[2px] leading-none">MAIN TERMINAL</span>
+    </a>
+
+    <!-- 顶部标题 -->
+    <div class="text-center mb-6 mt-4 md:mt-0 w-full">
+        <h1 class="text-3xl md:text-4xl font-sci-fi font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 mb-2 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]">
+            量子决策网络：二叉树 (BINARY TREE)
+        </h1>
+        <p class="text-emerald-400/60 text-sm tracking-widest font-sci-fi">HIERARCHICAL STRUCTURE & O(log N) SEARCH</p>
+    </div>
+
+    <!-- 理论铺垫区 -->
+    <div class="w-full max-w-6xl glass-panel rounded-2xl p-6 md:p-8 mb-6 flex flex-col md:flex-row gap-8 items-center border-l-4 border-l-emerald-400">
+        <div class="flex-1">
+            <h2 class="text-xl font-bold text-white mb-3">告别线性思维：<span class="text-emerald-400">分层与降维打击</span>。</h2>
+            <p class="text-gray-400 text-sm leading-relaxed mb-2">
+                数组和链表都是“一条线”走到黑（线性结构）。而树（Tree）是人类社会最常见的**层级结构（非线性）**，就像公司的组织架构图。
+            </p>
+            <p class="text-gray-400 text-sm leading-relaxed">
+                本实验室演示的是最经典的 **二叉搜索树 (BST)**，它的铁律极其简单：<br>
+                <strong class="text-cyan-400 font-sci-fi">左子树的所有节点 < 根节点 < 右子树的所有节点</strong>。<br>
+                这赋予了它极其恐怖的性能：每一次往下走，都能淘汰一半的错误选项！就像玩“猜数字”游戏，无论有多少数据，查找和插入都在 <strong class="text-yellow-400">O(log N)</strong> 瞬间完成。
+            </p>
+        </div>
+    </div>
+
+    <!-- 场景切换 Tabs -->
+    <div class="flex gap-4 md:gap-8 mb-6 border-b border-gray-800 w-full max-w-6xl px-4 overflow-x-auto pb-1">
+        <button id="tab-engine" class="tab-btn active pb-3 font-sci-fi text-gray-400 hover:text-gray-200" onclick="switchView('engine')">
+            [1] BST ENGINE (搜索与生长)
+        </button>
+        <button id="tab-traversal" class="tab-btn pb-3 font-sci-fi text-gray-400 hover:text-gray-200" onclick="switchView('traversal')">
+            [2] TRAVERSAL (多维遍历扫描)
+        </button>
+    </div>
+
+    <!-- 核心教具区 -->
+    <div class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- 左侧/上方：二叉树可视化画布 (占 8 列) -->
+        <div class="lg:col-span-8 glass-panel rounded-2xl p-4 flex flex-col relative">
+            <div class="absolute top-4 left-4 text-[10px] text-emerald-500/50 font-sci-fi z-30">DYNAMIC TREE RENDERER</div>
+            
+            <!-- 树图层 -->
+            <div id="tree-canvas" class="mt-4">
+                <svg id="svg-layer"></svg>
+                <div id="nodes-layer" class="absolute inset-0 w-full h-full"></div>
+            </div>
+            <div class="text-center text-[10px] text-gray-500 font-sci-fi mt-2">* 节点上限深度为 5，防止网络过载爆炸。</div>
+        </div>
+
+        <!-- 右侧/下方：操作控制台 (占 4 列) -->
+        <div class="lg:col-span-4 glass-panel rounded-2xl p-6 flex flex-col">
+            
+            <!-- VIEW 1: ENGINE 操控台 -->
+            <div id="panel-engine" class="flex flex-col flex-1">
+                <h2 class="text-lg font-bold text-emerald-300 font-sci-fi mb-4 border-b border-emerald-500/30 pb-2">
+                    NETWORK CONSOLE
+                </h2>
+
+                <div class="math-board mb-6">
+                    <div class="text-[9px] text-emerald-500/50 mb-1">EXECUTION LOG</div>
+                    <div id="code-log" class="text-xs text-gray-300 space-y-1 h-28 overflow-y-auto cyber-scroll pr-1">
+                        <div>> ROOT INITIATED.</div>
+                        <div>> WAITING FOR COMMAND...</div>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <!-- 插入 -->
+                    <div class="border-l-2 border-yellow-500 pl-3">
+                        <label class="text-[10px] text-yellow-400 font-sci-fi block mb-2">1. INSERT / 生长分叉 O(logN)</label>
+                        <div class="flex gap-2 items-center">
+                            <span class="text-gray-400 font-sci-fi text-xs w-10">Val:</span>
+                            <input type="number" id="inp-insert" class="control-input" value="45" min="1" max="99">
+                            <button onclick="handleInsert()" class="ml-auto px-4 py-1.5 rounded border border-yellow-500/50 bg-yellow-900/30 text-yellow-400 text-xs font-bold font-sci-fi">INSERT</button>
+                        </div>
+                    </div>
+
+                    <!-- 搜索 -->
+                    <div class="border-l-2 border-cyan-500 pl-3">
+                        <label class="text-[10px] text-cyan-400 font-sci-fi block mb-2">2. SEARCH / 极速寻址 O(logN)</label>
+                        <div class="flex gap-2 items-center">
+                            <span class="text-gray-400 font-sci-fi text-xs w-10">Target:</span>
+                            <input type="number" id="inp-search" class="control-input border-cyan-500/30 text-cyan-400 focus:border-cyan-400" value="50" min="1" max="99">
+                            <button onclick="handleSearch()" class="ml-auto px-4 py-1.5 rounded border border-cyan-500/50 bg-cyan-900/30 text-cyan-400 text-xs font-bold font-sci-fi">SEARCH</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex gap-2 mt-auto pt-6">
+                    <button onclick="buildRandomTree()" class="flex-1 py-2 rounded border border-gray-500 text-gray-300 text-xs font-sci-fi hover:border-emerald-400 hover:text-emerald-400 bg-gray-800/50">AUTO FILL (+5)</button>
+                    <button onclick="resetTree()" class="flex-1 py-2 rounded border border-red-500/50 text-red-400 text-xs font-sci-fi hover:bg-red-500 hover:text-black bg-black/40">PURGE TREE</button>
+                </div>
+            </div>
+
+            <!-- VIEW 2: TRAVERSAL 操控台 -->
+            <div id="panel-traversal" class="flex flex-col flex-1 hidden">
+                <h2 class="text-lg font-bold text-fuchsia-300 font-sci-fi mb-4 border-b border-fuchsia-500/30 pb-2">
+                    SCANNER MODULE
+                </h2>
+                <p class="text-xs text-gray-400 mb-6">不同的遍历策略决定了访问节点的先后顺序。它们本质上都是**深度优先搜索 (DFS)** 的变种。</p>
+
+                <div class="space-y-3 mb-6">
+                    <button onclick="handleTraverse('pre')" class="w-full text-left px-4 py-3 rounded border border-fuchsia-500/30 bg-black/40 hover:bg-fuchsia-900/20 group transition-all">
+                        <div class="text-fuchsia-400 font-bold font-sci-fi text-sm mb-1">PRE-ORDER (前序遍历)</div>
+                        <div class="text-[10px] text-gray-500 font-mono">顺序: [根] -> [左子树] -> [右子树]</div>
+                    </button>
+                    <button onclick="handleTraverse('in')" class="w-full text-left px-4 py-3 rounded border border-fuchsia-500/30 bg-black/40 hover:bg-fuchsia-900/20 group transition-all">
+                        <div class="text-fuchsia-400 font-bold font-sci-fi text-sm mb-1">IN-ORDER (中序遍历)</div>
+                        <div class="text-[10px] text-gray-500 font-mono">顺序: [左子树] -> [根] -> [右子树]<br><span class="text-yellow-500">*BST的中序遍历必定是升序排列！</span></div>
+                    </button>
+                    <button onclick="handleTraverse('post')" class="w-full text-left px-4 py-3 rounded border border-fuchsia-500/30 bg-black/40 hover:bg-fuchsia-900/20 group transition-all">
+                        <div class="text-fuchsia-400 font-bold font-sci-fi text-sm mb-1">POST-ORDER (后序遍历)</div>
+                        <div class="text-[10px] text-gray-500 font-mono">顺序: [左子树] -> [右子树] -> [根]</div>
+                    </button>
+                </div>
+
+                <div class="mt-auto">
+                    <div class="text-[10px] text-fuchsia-500/50 font-sci-fi mb-2">TRAVERSAL RESULT</div>
+                    <div id="traverse-output" class="w-full min-h-[100px] bg-black/60 border border-fuchsia-500/30 rounded p-3 overflow-y-auto cyber-scroll">
+                        <!-- 遍历结果碎块 -->
+                        <span class="text-gray-600 text-xs font-sci-fi animate-pulse">Awaiting scan protocol...</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 弹窗通知 -->
+    <div id="toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg border bg-black/80 backdrop-blur-md font-sci-fi text-sm font-bold z-50 transition-all duration-300 opacity-0 pointer-events-none"></div>
+
+    <script>
+        // ==========================================
+        // UI 与系统状态工具
+        // ==========================================
+        const toastEl = document.getElementById('toast');
+        const sleep = ms => new Promise(r => setTimeout(r, ms));
+        let isAnimating = false;
+
+        function showToast(msg, type='error') {
+            toastEl.innerHTML = msg;
+            toastEl.className = `fixed bottom-10 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg border font-sci-fi text-sm font-bold z-50 transition-all duration-300 pointer-events-none ${
+                type === 'error' ? 'bg-red-900/80 border-red-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.5)]' : 'bg-emerald-900/80 border-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.5)]'
+            }`;
+            toastEl.style.opacity = '1'; toastEl.style.transform = 'translate(-50%, -10px)';
+            setTimeout(() => { toastEl.style.opacity = '0'; toastEl.style.transform = 'translate(-50%, 0)'; }, 2500);
+        }
+
+        function switchView(view) {
+            if(isAnimating) return;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`tab-${view}`).classList.add('active');
+            
+            document.getElementById('panel-engine').classList.add('hidden');
+            document.getElementById('panel-traversal').classList.add('hidden');
+            document.getElementById('panel-engine').classList.remove('flex');
+            document.getElementById('panel-traversal').classList.remove('flex');
+            
+            document.getElementById(`panel-${view}`).classList.remove('hidden');
+            document.getElementById(`panel-${view}`).classList.add('flex');
+
+            clearHighlights();
+            document.getElementById('traverse-output').innerHTML = '<span class="text-gray-600 text-xs font-sci-fi animate-pulse">Awaiting scan protocol...</span>';
+        }
+
+        const codeLog = document.getElementById('code-log');
+        function addLog(msg, color='text-gray-300') {
+            const div = document.createElement('div');
+            div.innerHTML = `<span class="text-emerald-500">></span> <span class="${color}">${msg}</span>`;
+            codeLog.appendChild(div); codeLog.scrollTop = codeLog.scrollHeight;
+        }
+
+        // ==========================================
+        // 二叉树底层数据结构
+        // ==========================================
+        class TreeNode {
+            constructor(val, id) {
+                this.val = val;
+                this.left = null;
+                this.right = null;
+                this.id = id; // DOM ID
+                // 渲染坐标
+                this.x = 0; 
+                this.y = 0;
+            }
+        }
+
+        let root = null;
+        let nodeCounter = 0;
+        const MAX_DEPTH = 5; // 限制深度防越界
+
+        const svgLayer = document.getElementById('svg-layer');
+        const nodesLayer = document.getElementById('nodes-layer');
+        const canvasEl = document.getElementById('tree-canvas');
+
+        // ==========================================
+        // 核心渲染引擎
+        // ==========================================
+        
+        // 1. 计算所有节点的绝对坐标 (分治法)
+        function calculatePositions(node, depth, minX, maxX) {
+            if (!node) return;
+            // 垂直间隔 80px，起始高度 40px
+            node.y = 40 + depth * 80;
+            // 水平居中于所分配的区域
+            node.x = (minX + maxX) / 2;
+
+            // 递归分配左右子树的空间
+            calculatePositions(node.left, depth + 1, minX, node.x);
+            calculatePositions(node.right, depth + 1, node.x, maxX);
+        }
+
+        // 2. 擦除并重绘整个 SVG 和 Node DOM
+        function renderTree() {
+            if (!root) {
+                svgLayer.innerHTML = '';
+                nodesLayer.innerHTML = '';
+                return;
+            }
+
+            const canvasWidth = canvasEl.offsetWidth;
+            // 计算坐标
+            calculatePositions(root, 0, 0, canvasWidth);
+
+            let svgHTML = '';
+            let nodesHTML = '';
+
+            // 深度优先遍历构造 HTML
+            function buildHTML(node) {
+                if (!node) return;
+
+                // 构建线段
+                if (node.left) {
+                    svgHTML += `<line id="edge-${node.id}-${node.left.id}" class="tree-edge" x1="${node.x}" y1="${node.y}" x2="${node.left.x}" y2="${node.left.y}" />`;
+                    buildHTML(node.left);
+                }
+                if (node.right) {
+                    svgHTML += `<line id="edge-${node.id}-${node.right.id}" class="tree-edge" x1="${node.x}" y1="${node.y}" x2="${node.right.x}" y2="${node.right.y}" />`;
+                    buildHTML(node.right);
+                }
+
+                // 节点要等线画完再画，或者靠 z-index 保证覆盖
+                nodesHTML += `<div id="node-${node.id}" class="tree-node" style="left: ${node.x}px; top: ${node.y}px;">${node.val}</div>`;
+            }
+
+            buildHTML(root);
+            svgLayer.innerHTML = svgHTML;
+            nodesLayer.innerHTML = nodesHTML;
+        }
+
+        function clearHighlights() {
+            document.querySelectorAll('.tree-node').forEach(el => el.classList.remove('node-active', 'node-found', 'node-traverse', 'node-new'));
+            document.querySelectorAll('.tree-edge').forEach(el => el.classList.remove('edge-active', 'edge-traverse'));
+        }
+
+        // ==========================================
+        // 算法执行引擎 (Engine 交互)
+        // ==========================================
+
+        async function handleInsert() {
+            if (isAnimating) return;
+            const val = parseInt(document.getElementById('inp-insert').value);
+            if (isNaN(val)) return;
+
+            isAnimating = true;
+            clearHighlights();
+            addLog(`Init Insert: ${val}`, 'text-yellow-400 font-bold');
+
+            if (!root) {
+                root = new TreeNode(val, `n${nodeCounter++}`);
+                renderTree();
+                document.getElementById(`node-${root.id}`).classList.add('node-new');
+                addLog(`Root created: ${val}`, 'text-emerald-400');
+                isAnimating = false;
+                return;
+            }
+
+            let curr = root;
+            let depth = 0;
+
+            while (curr) {
+                // 1. 高亮当前对比节点
+                const currEl = document.getElementById(`node-${curr.id}`);
+                currEl.classList.add('node-active');
+                await sleep(500);
+
+                if (val === curr.val) {
+                    showToast('值已存在，BST 不支持重复节点', 'error');
+                    addLog(`Duplicate value ${val} rejected.`, 'text-red-400');
+                    currEl.classList.remove('node-active');
+                    currEl.classList.add('node-found'); // 红边等效，复用个颜色
+                    setTimeout(() => currEl.classList.remove('node-found'), 800);
+                    break;
+                }
+
+                if (depth >= MAX_DEPTH - 1) {
+                    showToast('已达最大网络深度，强制阻断！', 'error');
+                    addLog(`Max depth reached. Operation aborted.`, 'text-red-400');
+                    currEl.classList.remove('node-active');
+                    break;
+                }
+
+                if (val < curr.val) {
+                    addLog(`${val} < ${curr.val}. Routing LEFT...`, 'text-cyan-300');
+                    if (!curr.left) {
+                        curr.left = new TreeNode(val, `n${nodeCounter++}`);
+                        // 重绘树以计算新节点坐标
+                        renderTree();
+                        // 因为重绘了，需要重新获取元素
+                        const newEl = document.getElementById(`node-${curr.left.id}`);
+                        const edgeEl = document.getElementById(`edge-${curr.id}-${curr.left.id}`);
+                        
+                        edgeEl.classList.add('edge-active');
+                        newEl.classList.add('node-new');
+                        addLog(`Inserted ${val} as Left Child.`, 'text-emerald-400 font-bold');
+                        await sleep(800);
+                        edgeEl.classList.remove('edge-active');
+                        break;
+                    }
+                    
+                    // 向下走，高亮线段
+                    const edgeEl = document.getElementById(`edge-${curr.id}-${curr.left.id}`);
+                    edgeEl.classList.add('edge-active');
+                    await sleep(300);
+                    currEl.classList.remove('node-active');
+                    edgeEl.classList.remove('edge-active');
+                    
+                    curr = curr.left;
+                } 
+                else { // val > curr.val
+                    addLog(`${val} > ${curr.val}. Routing RIGHT...`, 'text-cyan-300');
+                    if (!curr.right) {
+                        curr.right = new TreeNode(val, `n${nodeCounter++}`);
+                        renderTree();
+                        const newEl = document.getElementById(`node-${curr.right.id}`);
+                        const edgeEl = document.getElementById(`edge-${curr.id}-${curr.right.id}`);
+                        
+                        edgeEl.classList.add('edge-active');
+                        newEl.classList.add('node-new');
+                        addLog(`Inserted ${val} as Right Child.`, 'text-emerald-400 font-bold');
+                        await sleep(800);
+                        edgeEl.classList.remove('edge-active');
+                        break;
+                    }
+                    
+                    const edgeEl = document.getElementById(`edge-${curr.id}-${curr.right.id}`);
+                    edgeEl.classList.add('edge-active');
+                    await sleep(300);
+                    currEl.classList.remove('node-active');
+                    edgeEl.classList.remove('edge-active');
+                    
+                    curr = curr.right;
+                }
+                depth++;
+            }
+
+            document.getElementById('inp-insert').value = Math.floor(Math.random() * 90) + 10;
+            isAnimating = false;
+        }
+
+        async function handleSearch() {
+            if (isAnimating || !root) return;
+            const val = parseInt(document.getElementById('inp-search').value);
+            if (isNaN(val)) return;
+
+            isAnimating = true;
+            clearHighlights();
+            addLog(`Init Search: ${val}`, 'text-cyan-400 font-bold');
+
+            let curr = root;
+            let found = false;
+
+            while (curr) {
+                const currEl = document.getElementById(`node-${curr.id}`);
+                currEl.classList.add('node-active');
+                await sleep(500);
+
+                if (val === curr.val) {
+                    addLog(`Match found! Subtrees discarded.`, 'text-emerald-400 font-bold');
+                    showToast(`找到了！目标值: ${val}`, 'success');
+                    currEl.classList.remove('node-active');
+                    currEl.classList.add('node-found');
+                    found = true;
+                    break;
+                }
+
+                if (val < curr.val) {
+                    addLog(`${val} < ${curr.val}. Drop RIGHT, go LEFT.`, 'text-gray-400');
+                    if(curr.left) {
+                        const edgeEl = document.getElementById(`edge-${curr.id}-${curr.left.id}`);
+                        edgeEl.classList.add('edge-active');
+                        await sleep(300);
+                        edgeEl.classList.remove('edge-active');
+                    }
+                    currEl.classList.remove('node-active');
+                    curr = curr.left;
+                } else {
+                    addLog(`${val} > ${curr.val}. Drop LEFT, go RIGHT.`, 'text-gray-400');
+                    if(curr.right) {
+                        const edgeEl = document.getElementById(`edge-${curr.id}-${curr.right.id}`);
+                        edgeEl.classList.add('edge-active');
+                        await sleep(300);
+                        edgeEl.classList.remove('edge-active');
+                    }
+                    currEl.classList.remove('node-active');
+                    curr = curr.right;
+                }
+            }
+
+            if (!found) {
+                addLog(`Target ${val} not found in Tree.`, 'text-red-400');
+                showToast('未找到该数据', 'error');
+            }
+
+            setTimeout(clearHighlights, 2000);
+            isAnimating = false;
+        }
+
+        async function buildRandomTree() {
+            if(isAnimating) return;
+            const targetCount = 5;
+            for(let i=0; i<targetCount; i++) {
+                document.getElementById('inp-insert').value = Math.floor(Math.random() * 90) + 10;
+                await handleInsert();
+            }
+        }
+
+        function resetTree() {
+            if(isAnimating) return;
+            root = null; nodeCounter = 0;
+            renderTree();
+            codeLog.innerHTML = '<div>> NETWORK PURGED.</div>';
+        }
+
+        // ==========================================
+        // 遍历扫描引擎 (Traversal)
+        // ==========================================
+
+        async function handleTraverse(type) {
+            if(isAnimating || !root) return;
+            isAnimating = true;
+            clearHighlights();
+            
+            const outputBox = document.getElementById('traverse-output');
+            outputBox.innerHTML = '';
+            
+            // 预先计算遍历路径数组
+            const sequence = [];
+            
+            function buildSequence(node, parentId = null) {
+                if(!node) return;
+                
+                // 为了视觉表现，我们不仅记录访问的节点，还记录走过的路线
+                const recordVisit = () => sequence.push({ action: 'visit', node: node });
+                const recordEdgeIn = () => { if(parentId) sequence.push({ action: 'edge', from: parentId, to: node.id }); }
+
+                if (type === 'pre') {
+                    recordEdgeIn(); recordVisit();
+                    buildSequence(node.left, node.id);
+                    buildSequence(node.right, node.id);
+                } else if (type === 'in') {
+                    recordEdgeIn();
+                    buildSequence(node.left, node.id);
+                    recordVisit();
+                    buildSequence(node.right, node.id);
+                } else if (type === 'post') {
+                    recordEdgeIn();
+                    buildSequence(node.left, node.id);
+                    buildSequence(node.right, node.id);
+                    recordVisit();
+                }
+            }
+
+            buildSequence(root);
+
+            // 播放序列动画
+            for(let step of sequence) {
+                if(step.action === 'visit') {
+                    const el = document.getElementById(`node-${step.node.id}`);
+                    el.classList.add('node-traverse');
+                    
+                    // 输出到 UI
+                    const span = document.createElement('span');
+                    span.className = 'traverse-item';
+                    span.innerText = step.node.val;
+                    outputBox.appendChild(span);
+                    
+                    await sleep(400);
+                } else if (step.action === 'edge') {
+                    const edgeEl = document.getElementById(`edge-${step.from}-${step.to}`);
+                    if(edgeEl) {
+                        edgeEl.classList.add('edge-traverse');
+                        await sleep(200);
+                    }
+                }
+            }
+            
+            showToast('SCAN PROTOCOL COMPLETE', 'success');
+            isAnimating = false;
+        }
+
+        // --- 预加载数据 ---
+        window.onload = async () => {
+            // 预设一个经典的满二叉树结构
+            const presets = [50, 30, 70, 20, 40, 60, 80];
+            
+            // 强制静默渲染，不放动画
+            for(let val of presets) {
+                if(!root) { root = new TreeNode(val, `n${nodeCounter++}`); continue; }
+                let curr = root;
+                while (curr) {
+                    if (val < curr.val) {
+                        if (!curr.left) { curr.left = new TreeNode(val, `n${nodeCounter++}`); break; }
+                        curr = curr.left;
+                    } else {
+                        if (!curr.right) { curr.right = new TreeNode(val, `n${nodeCounter++}`); break; }
+                        curr = curr.right;
+                    }
+                }
+            }
+            renderTree();
+        };
+
+    </script>
+</body>
+</html>

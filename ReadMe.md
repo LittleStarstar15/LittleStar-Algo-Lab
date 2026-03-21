@@ -1,12 +1,30 @@
 # 🌌 星华大学算法交互实验室 (Xinghua Algorithm Terminal)
 
-<img src="LittleStar.png" align="right" width="160" style="border-radius: 50%; border: 4px solid #00F0FF; box-shadow: 0 0 20px #00F0FF;">
+<img src="assets/images/LittleStar.png" align="right" width="160" style="border-radius: 50%; border: 4px solid #00F0FF; box-shadow: 0 0 20px #00F0FF;">
 
 > "算法不是枯燥的公式，它是将宇宙混沌转化为绝对秩序的魔法。"
 
 地球人你好，我是潜伏在地球的算法科学家 小星星 (Little Star) ✨。
 
 这里是星华大学在地球设立的【算法交互开源实验室】。本仓库包含了我在小红书 (*@算法科学家小星星*) 上发布的所有硬核、高视觉冲击力的可视化算法教具的源码。
+
+## 📁 仓库目录结构
+
+```
+LittleStar-Algo-Lab/
+├── assets/images/          # 静态资源（请将 LittleStar.png 放在此处）
+├── modules/
+│   ├── 01_data_structures/ # 数据结构可视化
+│   ├── 02_algorithms/      # 基础算法与应用
+│   ├── 03_math_stats/      # 概率与统计
+│   ├── 04_deep_learning/   # 深度学习
+│   └── 05_reinforcement/   # 强化学习
+├── index.html              # 全局主入口（根目录）
+├── ReadMe.md
+└── LICENSE
+```
+
+**头像图片**：若本地未显示头像，请将 `LittleStar.png` 复制到 `assets/images/LittleStar.png`。
 
 ## 🌐 在线体验终端 (Live Demo)
 
@@ -23,34 +41,41 @@
 
 ## 📚 知识模块库 (Modules)
 
-你可以通过访问上方的主终端进入，或者直接点击下方链接探索独立模块：
+从根目录打开 **`index.html`** 进入主终端，或直接访问下列路径：
 
-### 🧩 数据结构与算法 (Data Structures & Algorithms)
+### 🧩 数据结构 · `modules/01_data_structures/`
 
-- **[算法本质解析器](algorithm_intro.html)**：一键演示 Input -> Logic -> Output 的工业化加工流。
-- **时空复杂度可视化引擎**：拖动数据量(N)滑块，亲眼见证 $O(1)$ 的优雅与 $O(N^2)$ 引发系统崩溃的非线性灾难。
-- **星际数据收容单元**：全息投影演示 数组、链表、栈、队列、树与图 的核心调度逻辑。
-- **量子内存与数组寻址仪**：深潜计算机物理底层，直观感受连续内存的 $O(1)$ 跃迁与 $O(N)$ 插入灾难。
-- **A* 多维寻路模拟器**：手绘暗物质迷宫，动态对比 BFS（无脑穷举）与 A-Star（精算师）的智商差距。
+- **[星际数据收容单元](modules/01_data_structures/data_structures.html)**：数组、链表、栈、队列、树与图总览。
+- **[数组寻址仪](modules/01_data_structures/array_visualizer.html)**、**[链表](modules/01_data_structures/linked_list_visualizer.html)**、**[栈](modules/01_data_structures/stack_visualizer.html)**、**[队列](modules/01_data_structures/queue_visualizer.html)**、**[哈希](modules/01_data_structures/hash_visualizer.html)**、**[树](modules/01_data_structures/tree_visualizer.html)**、**[图](modules/01_data_structures/graph_visualizer.html)**、**[堆](modules/01_data_structures/heap_visualizer.html)**。
 
-### 🎲 概率与统计 (Probability & Statistics)
+### ⚙️ 算法 · `modules/02_algorithms/`
 
-- **贝叶斯概率引擎**：用 10,000 个像素样本点，拆解罕见病与 UFO 探测中的“假阳性”与“后验概率”反直觉陷阱。
+- **[算法本质解析器](modules/02_algorithms/algorithm_intro.html)**
+- **[复杂度可视化](modules/02_algorithms/complexity.html)**
+- **[A* 寻路](modules/02_algorithms/pathfinder_ultimate.html)**
 
-### 🧠 深度学习与 AI (Deep Learning & AI)
+### 🎲 概率与统计 · `modules/03_math_stats/`
 
-- **CNN 前向传播透视仪**：亲手配置 Padding 和 Stride，体验 Convolution（卷积提取）、ReLU（非线性激活）和 Pooling（池化降维）的完整流水线。
-- **生物接口：手势控制终端**：调用本地摄像头，通过边缘计算模型实现“隔空捏合”触发系统指令的赛博交互。
+- **[贝叶斯概率引擎](modules/03_math_stats/bayes_engine.html)**
+
+### 🧠 深度学习 · `modules/04_deep_learning/`
+
+- **[CNN 透视仪](modules/04_deep_learning/cnn_visualizer.html)**
+- **[手势控制终端](modules/04_deep_learning/gesture_control.html)**
+
+### 🎮 强化学习 · `modules/05_reinforcement/`
+
+- **[蒙特卡洛探路者](modules/05_reinforcement/monte_carlo_rl.html)**
 
 ## 🚀 本地运行指南 (Local Run)
 
 如果你想研究源码，本仓库极其轻量，完全不需要复杂的 npm install 或环境配置：
 
 1. 克隆或下载本仓库的 ZIP 压缩包并解压。
-2. 在文件夹中找到 index.html 文件。
+2. 在仓库根目录找到 **`index.html`**。
 3. 双击在浏览器中打开（推荐使用 Chrome 或 Edge），即可进入。
 
-> (注：部分模块如 手势控制终端 涉及调用本地摄像头，由于浏览器的安全限制，如果直接双击打开本地文件可能会失败。建议使用 VSCode 的 Live Server 插件打开，或者直接访问线上版本)。
+> (注：部分模块如手势控制涉及调用本地摄像头，由于浏览器的安全限制，如果直接双击打开本地文件可能会失败。建议使用 VSCode 的 Live Server 插件打开，或者直接访问线上版本)。
 
 ## 💌 关于作者 (About the Author)
 

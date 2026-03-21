@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星华大学：量子优先引擎 (堆 HEAP)</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Google Fonts 科幻字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Noto+Sans+SC:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        /* 宇宙深空网络背景 */
+        body {
+            background-color: #050814;
+            font-family: 'Noto Sans SC', sans-serif;
+            color: #e2e8f0;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 20% 20%, rgba(245, 158, 11, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(239, 68, 68, 0.08) 0%, transparent 50%),
+                linear-gradient(to bottom, transparent, rgba(0,0,0,0.8));
+        }
+
+        .font-sci-fi { font-family: 'Orbitron', sans-serif; }
+
+        .glass-panel {
+            background: rgba(11, 15, 25, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            box-shadow: 0 0 30px rgba(245, 158, 11, 0.05);
+        }
+
+        /* 标签切换 */
+        .tab-btn { transition: all 0.3s ease; border-bottom: 2px solid transparent; white-space: nowrap; }
+        .tab-btn.active { color: #f59e0b; border-bottom-color: #f59e0b; text-shadow: 0 0 8px rgba(245, 158, 11, 0.6); font-weight: bold; }
+
+        /* ======== 树结构层 (上部分) ======== */
+        #tree-canvas {
+            position: relative; width: 100%; height: 320px;
+            background: rgba(0, 0, 0, 0.4); border-radius: 8px;
+            border: 1px dashed rgba(245, 158, 11, 0.3); overflow: hidden;
+            box-shadow: inset 0 0 30px rgba(245, 158, 11, 0.05);
+        }
+
+        .tree-node {
+            position: absolute;
+            width: 36px; height: 36px;
+            background: rgba(15, 23, 42, 0.9);
+            border: 2px solid #f59e0b;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Orbitron', monospace; font-size: 13px; font-weight: bold; color: #f59e0b;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.3), inset 0 0 10px rgba(245, 158, 11, 0.2);
+            transform: translate(-50%, -50%);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 20;
+        }
+
+        .tree-node .node-idx {
+            position: absolute; top: -16px; left: 50%; transform: translateX(-50%);
+            font-size: 9px; color: rgba(245, 158, 11, 0.6); font-family: monospace;
+        }
+
+        /* ======== 数组结构层 (下部分) ======== */
+        .array-container {
+            display: flex; gap: 4px; padding: 12px;
+            background: rgba(0, 0, 0, 0.6); border: 2px solid rgba(100, 116, 139, 0.3);
+            border-radius: 8px; overflow-x: auto; position: relative;
+            scrollbar-width: thin; scrollbar-color: rgba(245, 158, 11, 0.5) rgba(0,0,0,0.5);
+            min-height: 80px;
+        }
+
+        .array-container::-webkit-scrollbar { height: 6px; }
+        .array-container::-webkit-scrollbar-track { background: rgba(0,0,0,0.8); border-radius: 3px; }
+        .array-container::-webkit-scrollbar-thumb { background: rgba(245, 158, 11, 0.4); border-radius: 3px; }
+
+        .arr-slot {
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+            min-width: 40px; flex-shrink: 0;
+        }
+        .arr-idx { font-family: 'Orbitron', monospace; font-size: 10px; color: rgba(255,255,255,0.4); }
+        
+        .arr-block {
+            width: 100%; height: 40px;
+            background: rgba(15, 23, 42, 0.9); border: 1px dashed rgba(245, 158, 11, 0.4);
+            border-radius: 4px; display: flex; align-items: center; justify-content: center;
+            font-family: 'Orbitron', monospace; font-size: 14px; font-weight: bold; color: transparent;
+            transition: all 0.3s;
+        }
+        .arr-block.filled {
+            background: rgba(245, 158, 11, 0.15); border: 1px solid #f59e0b; color: #f59e0b;
+        }
+
+        /* ======== 动画与特效状态 ======== */
+        .node-new { animation: spawnNode 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+        @keyframes spawnNode {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; box-shadow: 0 0 50px #FFF; background: #FFF; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+
+        .target-compare {
+            background: rgba(0, 240, 255, 0.3) !important; border-color: #00F0FF !important; color: #FFF !important;
+            box-shadow: 0 0 20px #00F0FF !important; transform: translate(-50%, -50%) scale(1.15) !important; z-index: 30;
+        }
+        .arr-target-compare {
+            background: rgba(0, 240, 255, 0.3) !important; border-color: #00F0FF !important; color: #FFF !important;
+            box-shadow: 0 0 15px #00F0FF !important; transform: translateY(-4px);
+        }
+
+        .target-swap {
+            animation: swapFlash 0.5s ease-out; z-index: 35;
+        }
+        .arr-target-swap {
+            animation: arrSwapFlash 0.5s ease-out;
+        }
+        @keyframes swapFlash {
+            0% { background: #ef4444; color: #FFF; border-color: #ef4444; box-shadow: 0 0 40px #ef4444; transform: translate(-50%, -50%) scale(1.3); }
+            100% { background: rgba(15, 23, 42, 0.9); color: #f59e0b; border-color: #f59e0b; transform: translate(-50%, -50%) scale(1); }
+        }
+        @keyframes arrSwapFlash {
+            0% { background: #ef4444; color: #FFF; border-color: #ef4444; box-shadow: 0 0 30px #ef4444; transform: scale(1.1); }
+            100% { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border-color: #f59e0b; transform: scale(1); }
+        }
+
+        .node-extract {
+            animation: extractNode 0.6s forwards;
+        }
+        @keyframes extractNode {
+            50% { background: #10b981; color: #FFF; border-color: #10b981; box-shadow: 0 0 40px #10b981; transform: translate(-50%, -50%) scale(1.5); }
+            100% { transform: translate(-50%, -150%) scale(0); opacity: 0; }
+        }
+
+        /* SVG 连线层 */
+        #svg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+        .tree-edge { stroke: rgba(245, 158, 11, 0.2); stroke-width: 2; fill: none; transition: all 0.3s; }
+        .edge-compare { stroke: #00F0FF; stroke-width: 4; filter: drop-shadow(0 0 5px #00F0FF); }
+        .edge-swap { stroke: #ef4444; stroke-width: 4; filter: drop-shadow(0 0 8px #ef4444); }
+
+        /* 数学面板与控制台 */
+        .math-board { background: rgba(0, 0, 0, 0.6); border: 1px dashed rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 12px; font-family: 'Orbitron', monospace; }
+        button { transition: all 0.2s; }
+        button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 0 15px rgba(245, 158, 11, 0.4); }
+        button:active:not(:disabled) { transform: translateY(1px); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+        .control-input { background: rgba(0,0,0,0.6); border: 1px solid rgba(245, 158, 11, 0.3); color: #f59e0b; text-align: center; border-radius: 4px; padding: 4px; width: 80px; outline: none; font-family: 'Orbitron'; }
+        .control-input:focus { border-color: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.5); }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; } input[type=number] { -moz-appearance: textfield; }
+        .cyber-scroll::-webkit-scrollbar { width: 4px; } .cyber-scroll::-webkit-scrollbar-thumb { background: rgba(245, 158, 11, 0.4); border-radius: 2px; }
+
+        /* 应用层任务节点 */
+        .task-item {
+            background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(16, 185, 129, 0.4);
+            border-left: 4px solid #10b981; border-radius: 4px; padding: 8px 12px;
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 8px; animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4 md:p-6 pt-16 md:pt-6" onresize="renderTreeVisuals()">
+
+    <!-- 🚀 返回主菜单按钮 -->
+    <a href="../../index.html" class="fixed top-4 left-4 md:top-6 md:left-6 z-50 flex items-center justify-center gap-2 px-3 py-2 md:px-4 md:py-2 rounded border border-cyan-500/30 bg-black/60 backdrop-blur-md text-cyan-500/70 hover:text-cyan-300 hover:border-cyan-400 hover:shadow-[0_0_15px_rgba(0,240,255,0.4)] transition-all group text-decoration-none">
+        <svg class="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        <span class="hidden md:inline tracking-wider font-sci-fi text-xs md:text-sm pt-[2px] leading-none">MAIN TERMINAL</span>
+    </a>
+
+    <!-- 顶部标题 -->
+    <div class="text-center mb-6 mt-4 md:mt-0 w-full">
+        <h1 class="text-3xl md:text-4xl font-sci-fi font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-red-500 mb-2 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">
+            量子优先引擎：堆 (HEAP)
+        </h1>
+        <p class="text-amber-400/60 text-sm tracking-widest font-sci-fi">COMPLETE BINARY TREE & PRIORITY QUEUE</p>
+    </div>
+
+    <!-- 理论铺垫区 -->
+    <div class="w-full max-w-6xl glass-panel rounded-2xl p-6 md:p-8 mb-6 flex flex-col md:flex-row gap-8 items-center border-l-4 border-l-amber-500">
+        <div class="flex-1">
+            <h2 class="text-xl font-bold text-white mb-3">抛弃指针的数学魔法：<span class="text-amber-400">数组模拟树</span>。</h2>
+            <p class="text-gray-400 text-sm leading-relaxed mb-2">
+                二叉树需要维护繁琐的 left/right 内存指针，但 **堆 (Heap)** 是个天才的设计。它是一棵<span class="text-white font-bold">完全二叉树</span>，极其紧凑，因此可以直接被“拍扁”存进一个连续的<span class="text-cyan-400 font-bold">一维数组</span>里！
+            </p>
+            <p class="text-gray-400 text-sm leading-relaxed">
+                无需指针，只需简单的数学运算就能穿梭时空：<br>
+                节点 <code class="text-fuchsia-400 bg-black/50 px-1 rounded">[i]</code> 的左孩子是 <code class="text-emerald-400 bg-black/50 px-1 rounded">[2i + 1]</code>，右孩子是 <code class="text-emerald-400 bg-black/50 px-1 rounded">[2i + 2]</code>，父亲是 <code class="text-yellow-400 bg-black/50 px-1 rounded">[(i - 1) / 2]</code>。<br>
+                本沙盘演示 **大顶堆 (Max Heap)**：<span class="text-red-400 font-bold">根节点永远是全场最大的 VIP！</span>
+            </p>
+        </div>
+    </div>
+
+    <!-- 场景切换 Tabs -->
+    <div class="flex gap-4 md:gap-8 mb-6 border-b border-gray-800 w-full max-w-6xl px-4 overflow-x-auto pb-1">
+        <button id="tab-engine" class="tab-btn active pb-3 font-sci-fi text-gray-400 hover:text-gray-200" onclick="switchView('engine')">
+            [1] HEAP ENGINE (上浮与下沉)
+        </button>
+        <button id="tab-app" class="tab-btn pb-3 font-sci-fi text-gray-400 hover:text-gray-200" onclick="switchView('app')">
+            [2] PRIORITY QUEUE (优先队列应用)
+        </button>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 视图 1：核心引擎 (树数组二象性)             -->
+    <!-- ========================================== -->
+    <div id="view-engine" class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- 左侧：全息双态可视化 (占 8 列) -->
+        <div class="lg:col-span-8 flex flex-col gap-4">
+            
+            <!-- 上半部：树图层 -->
+            <div class="glass-panel rounded-2xl p-4 flex flex-col relative h-[380px]">
+                <div class="absolute top-4 left-4 text-[10px] text-amber-500/50 font-sci-fi z-30">LOGICAL VIEW (逻辑视图：完全二叉树)</div>
+                <div id="tree-canvas" class="mt-8 border-none bg-transparent shadow-none">
+                    <svg id="svg-layer"></svg>
+                    <div id="nodes-layer" class="absolute inset-0 w-full h-full"></div>
+                </div>
+            </div>
+
+            <!-- 下半部：数组图层 -->
+            <div class="glass-panel rounded-2xl p-4 flex flex-col relative h-[140px]">
+                <div class="absolute top-4 left-4 text-[10px] text-cyan-500/50 font-sci-fi z-30">PHYSICAL VIEW (物理视图：一维数组)</div>
+                <div class="array-container mt-8" id="arr-layer">
+                    <!-- JS 渲染 15 个槽位 -->
+                </div>
+            </div>
+            
+        </div>
+
+        <!-- 右侧：操作控制台 (占 4 列) -->
+        <div class="lg:col-span-4 glass-panel rounded-2xl p-6 flex flex-col">
+            <h2 class="text-lg font-bold text-amber-300 font-sci-fi mb-4 border-b border-amber-500/30 pb-2">
+                HEAP CONSOLE (最大堆)
+            </h2>
+
+            <div class="math-board mb-6">
+                <div class="w-full flex justify-between">
+                    <span class="text-[9px] text-amber-500/50 mb-1">EXECUTION LOG</span>
+                    <span class="text-[9px] text-cyan-400 font-bold" id="lbl-size">SIZE: 0 / 15</span>
+                </div>
+                <div id="code-log" class="text-xs text-gray-300 space-y-1 h-32 overflow-y-auto cyber-scroll pr-1">
+                    <div>> ENGINE INITIALIZED. MAX-HEAP MODE.</div>
+                    <div>> WAITING FOR COMMAND...</div>
+                </div>
+            </div>
+
+            <!-- 操作面板 -->
+            <div class="space-y-5">
+                <!-- 插入 -->
+                <div class="border-l-2 border-emerald-500 pl-3">
+                    <label class="text-[10px] text-emerald-400 font-sci-fi block mb-2">1. INSERT & SWIM / 插入并上浮 O(logN)</label>
+                    <div class="flex gap-2 items-center">
+                        <input type="number" id="inp-insert" class="control-input flex-1" value="88" min="1" max="999">
+                        <button onclick="handleInsert()" class="px-4 py-2 rounded border border-emerald-500/50 bg-emerald-900/30 text-emerald-400 text-xs font-bold font-sci-fi">INSERT</button>
+                    </div>
+                    <p class="text-[9px] text-gray-500 mt-2">插入数组末尾，然后与其父节点 <code class="text-cyan-400">[(i-1)/2]</code> 对比，若更大则**上浮(Swim)**交换。</p>
+                </div>
+
+                <!-- 提取最大值 -->
+                <div class="border-l-2 border-red-500 pl-3">
+                    <label class="text-[10px] text-red-400 font-sci-fi block mb-2">2. EXTRACT MAX & SINK / 拔除并下沉 O(logN)</label>
+                    <button onclick="handleExtract()" class="w-full py-2 rounded border border-red-500/50 bg-red-900/30 text-red-400 text-xs font-bold font-sci-fi flex items-center justify-center gap-2">
+                        <span>🚀</span> EXTRACT VIP (ROOT)
+                    </button>
+                    <p class="text-[9px] text-gray-500 mt-2">拔除堆顶[0]，将数组末尾元素移至顶端，然后与左右子节点对比，向大的一方**下沉(Sink)**。</p>
+                </div>
+            </div>
+            
+            <div class="flex gap-2 mt-auto pt-6">
+                <button onclick="buildRandomHeap()" class="flex-1 py-2 rounded border border-gray-500 text-gray-300 text-xs font-sci-fi hover:border-amber-400 hover:text-amber-400 bg-gray-800/50">AUTO FILL (随机生成)</button>
+                <button onclick="resetHeap()" class="flex-1 py-2 rounded border border-red-500/50 text-red-400 text-xs font-sci-fi hover:bg-red-500 hover:text-black bg-black/40">PURGE HEAP</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 视图 2：优先队列应用 (Task Scheduler)          -->
+    <!-- ========================================== -->
+    <div id="view-app" class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-6 hidden">
+        
+        <div class="lg:col-span-12 glass-panel rounded-2xl p-6 mb-2 flex items-center justify-between border-l-4 border-l-cyan-400 bg-gradient-to-r from-cyan-900/20 to-transparent">
+            <div>
+                <h3 class="text-xl font-bold text-cyan-300 font-sci-fi mb-1">VIP 任务调度中心 (PRIORITY QUEUE)</h3>
+                <p class="text-sm text-gray-400">普通的队列是“先来后到(FIFO)”。但优先队列是由 <strong>堆(Heap)</strong> 驱动的：它只认权重！权重越高的任务，无论什么时候被塞进去，都会被瞬间“上浮”到最前面，被 CPU 优先处理。</p>
+            </div>
+        </div>
+
+        <!-- 任务输入区 -->
+        <div class="lg:col-span-5 glass-panel rounded-2xl p-6 flex flex-col">
+            <h3 class="text-emerald-400 font-bold font-sci-fi mb-4 border-b border-emerald-500/30 pb-2">ADD NEW TASK</h3>
+            
+            <div class="space-y-4 mb-6">
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Task Name (任务指令):</label>
+                    <input type="text" id="app-task-name" class="w-full bg-black/60 border border-gray-700 rounded p-2 text-cyan-400 text-sm outline-none focus:border-cyan-500" value="扫描星区残骸">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Priority Weight (紧急权重 1-99):</label>
+                    <input type="number" id="app-task-weight" class="w-full bg-black/60 border border-amber-500/50 rounded p-2 text-amber-400 text-lg font-bold outline-none focus:border-amber-400" value="30" min="1" max="99">
+                </div>
+                
+                <div class="flex gap-2">
+                    <button onclick="appAddTask('日常维护', 10)" class="flex-1 py-1 bg-gray-800 border border-gray-600 rounded text-xs text-gray-300 hover:border-cyan-400">日常(10)</button>
+                    <button onclick="appAddTask('偏导盾充能', 50)" class="flex-1 py-1 bg-gray-800 border border-gray-600 rounded text-xs text-gray-300 hover:border-yellow-400">防御(50)</button>
+                    <button onclick="appAddTask('核心过载警告', 99)" class="flex-1 py-1 bg-gray-800 border border-gray-600 rounded text-xs text-gray-300 hover:border-red-400">危机(99)</button>
+                </div>
+            </div>
+
+            <button onclick="appSubmitTask()" class="mt-auto w-full py-3 rounded border border-emerald-500 bg-emerald-900/40 text-emerald-400 font-bold font-sci-fi text-lg shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:bg-emerald-500 hover:text-black transition-all">
+                ENQUEUE (压入队列)
+            </button>
+        </div>
+
+        <!-- 队列可视化区 -->
+        <div class="lg:col-span-7 glass-panel rounded-2xl p-6 flex flex-col relative">
+            <h3 class="text-amber-400 font-bold font-sci-fi mb-4 border-b border-amber-500/30 pb-2 flex justify-between">
+                <span>PRIORITY QUEUE BUFFER (基于 Max-Heap)</span>
+                <span id="app-q-count" class="text-cyan-400">0 TASKS</span>
+            </h3>
+            
+            <div id="app-queue-list" class="flex-1 overflow-y-auto cyber-scroll pr-2 mb-4 min-h-[200px]">
+                <div class="text-center text-gray-600 font-sci-fi mt-10">Queue is empty.</div>
+            </div>
+
+            <button onclick="appProcessNext()" id="btn-process" disabled class="w-full py-3 rounded border border-fuchsia-500 bg-fuchsia-900/40 text-fuchsia-400 font-bold font-sci-fi text-lg shadow-[0_0_15px_rgba(217,70,239,0.2)] hover:bg-fuchsia-500 hover:text-black transition-all disabled:opacity-30 disabled:hover:bg-fuchsia-900/40 disabled:hover:text-fuchsia-400">
+                PROCESS NEXT (提取最高优任务) ▶
+            </button>
+        </div>
+    </div>
+
+    <!-- 弹窗通知 -->
+    <div id="toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg border bg-black/80 backdrop-blur-md font-sci-fi text-sm font-bold z-50 transition-all duration-300 opacity-0 pointer-events-none"></div>
+
+    <script>
+        // ==========================================
+        // UI 与系统状态工具
+        // ==========================================
+        const toastEl = document.getElementById('toast');
+        const sleep = ms => new Promise(r => setTimeout(r, ms));
+        let isAnimating = false;
+
+        function showToast(msg, type='error') {
+            toastEl.innerHTML = msg;
+            toastEl.className = `fixed bottom-10 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg border font-sci-fi text-sm font-bold z-50 transition-all duration-300 pointer-events-none ${
+                type === 'error' ? 'bg-red-900/80 border-red-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.5)]' : 'bg-emerald-900/80 border-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.5)]'
+            }`;
+            toastEl.style.opacity = '1'; toastEl.style.transform = 'translate(-50%, -10px)';
+            setTimeout(() => { toastEl.style.opacity = '0'; toastEl.style.transform = 'translate(-50%, 0)'; }, 2500);
+        }
+
+        function switchView(view) {
+            if(isAnimating) return;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`tab-${view}`).classList.add('active');
+            
+            document.getElementById('view-engine').classList.add('hidden');
+            document.getElementById('view-app').classList.add('hidden');
+            document.getElementById('view-engine').classList.remove('grid');
+            document.getElementById('view-app').classList.remove('grid');
+            
+            document.getElementById(`view-${view}`).classList.remove('hidden');
+            document.getElementById(`view-${view}`).classList.add('grid');
+            
+            if(view === 'engine') renderTreeVisuals();
+        }
+
+        const codeLog = document.getElementById('code-log');
+        function addLog(msg, color='text-gray-300') {
+            const div = document.createElement('div');
+            div.innerHTML = `<span class="text-amber-500">></span> <span class="${color}">${msg}</span>`;
+            codeLog.appendChild(div); codeLog.scrollTop = codeLog.scrollHeight;
+        }
+
+        // ==========================================
+        // 堆引擎底层逻辑 (Max-Heap)
+        // ==========================================
+        const MAX_NODES = 15; // 满二叉树 4 层 (1+2+4+8)
+        let heap = []; // 存储 {id, val}
+        let nodeIdCounter = 0;
+
+        const svgLayer = document.getElementById('svg-layer');
+        const nodesLayer = document.getElementById('nodes-layer');
+        const arrLayer = document.getElementById('arr-layer');
+        const canvasEl = document.getElementById('tree-canvas');
+        const lblSize = document.getElementById('lbl-size');
+
+        // 计算完全二叉树的物理坐标
+        function getCoords(index) {
+            const width = canvasEl.offsetWidth || 600;
+            const height = canvasEl.offsetHeight || 320;
+            
+            if (index === 0) return { x: width / 2, y: 40 };
+            
+            const depth = Math.floor(Math.log2(index + 1));
+            const levelNodes = Math.pow(2, depth);
+            const posInLevel = index - (levelNodes - 1);
+            const spacing = width / levelNodes;
+            
+            // 层级深度分布: 0->40, 1->110, 2->180, 3->250
+            return { 
+                x: spacing * posInLevel + spacing / 2, 
+                y: 40 + depth * 75 
+            };
+        }
+
+        // 初始化底层的静态空数组 UI
+        function initArrayUI() {
+            arrLayer.innerHTML = '';
+            for(let i=0; i<MAX_NODES; i++) {
+                arrLayer.innerHTML += `
+                    <div class="arr-slot">
+                        <div class="arr-idx">[${i}]</div>
+                        <div class="arr-block" id="arr-box-${i}"></div>
+                    </div>
+                `;
+            }
+        }
+
+        // 全局重绘树与数组数据
+        function renderTreeVisuals() {
+            nodesLayer.innerHTML = '';
+            let svgHTML = '';
+            
+            // 更新右侧计数
+            lblSize.innerText = `SIZE: ${heap.length} / 15`;
+            if(heap.length === MAX_NODES) lblSize.className = 'text-[9px] text-red-400 font-bold';
+            else lblSize.className = 'text-[9px] text-cyan-400 font-bold';
+
+            // 更新数组层
+            for(let i=0; i<MAX_NODES; i++) {
+                const box = document.getElementById(`arr-box-${i}`);
+                if(i < heap.length) {
+                    box.innerText = heap[i].val;
+                    box.className = 'arr-block filled';
+                } else {
+                    box.innerText = '';
+                    box.className = 'arr-block';
+                }
+            }
+
+            if (heap.length === 0) { svgLayer.innerHTML = ''; return; }
+
+            // 绘制线和节点
+            for(let i=0; i<heap.length; i++) {
+                const coords = getCoords(i);
+                
+                // 画节点
+                nodesLayer.innerHTML += `
+                    <div class="tree-node" style="left: ${coords.x}px; top: ${coords.y}px;" id="node-${i}">
+                        ${heap[i].val}
+                        <div class="node-idx">[${i}]</div>
+                    </div>
+                `;
+
+                // 画连线到子节点
+                const leftIdx = 2 * i + 1;
+                const rightIdx = 2 * i + 2;
+                
+                if (leftIdx < heap.length) {
+                    const leftCoords = getCoords(leftIdx);
+                    svgHTML += `<line id="edge-${i}-${leftIdx}" class="tree-edge" x1="${coords.x}" y1="${coords.y}" x2="${leftCoords.x}" y2="${leftCoords.y}" />`;
+                }
+                if (rightIdx < heap.length) {
+                    const rightCoords = getCoords(rightIdx);
+                    svgHTML += `<line id="edge-${i}-${rightIdx}" class="tree-edge" x1="${coords.x}" y1="${coords.y}" x2="${rightCoords.x}" y2="${rightCoords.y}" />`;
+                }
+            }
+            svgLayer.innerHTML = svgHTML;
+        }
+
+        function clearHighlights() {
+            document.querySelectorAll('.tree-node').forEach(el => el.classList.remove('target-compare', 'target-swap', 'node-new', 'node-extract'));
+            document.querySelectorAll('.arr-block').forEach(el => el.classList.remove('arr-target-compare', 'arr-target-swap'));
+            document.querySelectorAll('.tree-edge').forEach(el => el.classList.remove('edge-compare', 'edge-swap'));
+        }
+
+        // ==========================================
+        // 核心算法：插入与上浮 (Swim)
+        // ==========================================
+        async function handleInsert() {
+            if(isAnimating) return;
+            const val = parseInt(document.getElementById('inp-insert').value);
+            if(isNaN(val)) return;
+
+            if(heap.length >= MAX_NODES) {
+                showToast("HEAP IS FULL! (堆已满)", "error");
+                return;
+            }
+
+            isAnimating = true;
+            clearHighlights();
+            addLog(`>> INSERT: ${val} to end of array [${heap.length}]`, "text-emerald-400 font-bold");
+
+            // 1. 放入末尾
+            const newIdx = heap.length;
+            heap.push({ id: nodeIdCounter++, val: val });
+            renderTreeVisuals();
+            
+            const newNodeEl = document.getElementById(`node-${newIdx}`);
+            newNodeEl.classList.add('node-new');
+            const arrBox = document.getElementById(`arr-box-${newIdx}`);
+            arrBox.classList.add('arr-target-compare');
+            await sleep(800);
+
+            // 2. 上浮 (Swim)
+            await heapifyUp(newIdx);
+
+            document.getElementById('inp-insert').value = Math.floor(Math.random() * 90) + 10;
+            setTimeout(clearHighlights, 1000);
+            isAnimating = false;
+        }
+
+        async function heapifyUp(idx) {
+            let curr = idx;
+            while(curr > 0) {
+                const parent = Math.floor((curr - 1) / 2);
+                
+                // 视觉：比较
+                const nodeCurr = document.getElementById(`node-${curr}`);
+                const nodeParent = document.getElementById(`node-${parent}`);
+                const arrCurr = document.getElementById(`arr-box-${curr}`);
+                const arrParent = document.getElementById(`arr-box-${parent}`);
+                const edge = document.getElementById(`edge-${parent}-${curr}`);
+                
+                nodeCurr.classList.add('target-compare'); nodeParent.classList.add('target-compare');
+                arrCurr.classList.add('arr-target-compare'); arrParent.classList.add('arr-target-compare');
+                if(edge) edge.classList.add('edge-compare');
+                
+                addLog(`Compare [${curr}](${heap[curr].val}) with Parent [${parent}](${heap[parent].val})`, "text-cyan-300");
+                await sleep(800);
+
+                if (heap[curr].val > heap[parent].val) {
+                    addLog(`Child > Parent. SWIM UP! (发生交换)`, "text-yellow-400 font-bold");
+                    
+                    // 改变连线颜色
+                    if(edge) { edge.classList.remove('edge-compare'); edge.classList.add('edge-swap'); }
+                    
+                    // 逻辑交换
+                    let temp = heap[curr];
+                    heap[curr] = heap[parent];
+                    heap[parent] = temp;
+
+                    // 视觉闪烁与重新渲染
+                    nodeCurr.classList.remove('target-compare'); nodeParent.classList.remove('target-compare');
+                    renderTreeVisuals(); // 重绘让文字位置正确
+                    
+                    // 获取重绘后的新元素添加闪烁
+                    document.getElementById(`node-${curr}`).classList.add('target-swap');
+                    document.getElementById(`node-${parent}`).classList.add('target-swap');
+                    document.getElementById(`arr-box-${curr}`).classList.add('arr-target-swap');
+                    document.getElementById(`arr-box-${parent}`).classList.add('arr-target-swap');
+                    
+                    await sleep(800);
+                    curr = parent;
+                } else {
+                    addLog(`Order correct. Swim finished.`, "text-gray-400");
+                    break;
+                }
+            }
+            if(curr === 0) addLog(`Reached ROOT. Swim finished.`, "text-fuchsia-400 font-bold");
+        }
+
+        // ==========================================
+        // 核心算法：提取与下沉 (Sink)
+        // ==========================================
+        async function handleExtract() {
+            if(isAnimating) return;
+            if(heap.length === 0) { showToast("HEAP IS EMPTY!", "error"); return; }
+
+            isAnimating = true;
+            clearHighlights();
+            const maxVal = heap[0].val;
+            addLog(`>> EXTRACT MAX: Root [0] = ${maxVal}`, "text-red-400 font-bold");
+
+            // 1. 视觉：拔除 Root
+            const rootNode = document.getElementById('node-0');
+            rootNode.classList.add('node-extract');
+            document.getElementById('arr-box-0').style.background = '#ef4444';
+            document.getElementById('arr-box-0').style.color = '#FFF';
+            await sleep(800);
+
+            if(heap.length === 1) {
+                heap.pop();
+                renderTreeVisuals();
+                addLog("Heap is now empty.", "text-gray-400");
+                isAnimating = false;
+                return;
+            }
+
+            // 2. 将末尾移动到 Root
+            const lastIdx = heap.length - 1;
+            const lastVal = heap[lastIdx].val;
+            addLog(`Move last element [${lastIdx}](${lastVal}) to ROOT [0]`, "text-yellow-400");
+            
+            heap[0] = heap.pop();
+            renderTreeVisuals();
+            
+            document.getElementById('node-0').classList.add('target-swap');
+            document.getElementById('arr-box-0').classList.add('arr-target-swap');
+            await sleep(800);
+
+            // 3. 下沉 (Sink)
+            await heapifyDown(0);
+
+            showToast(`成功提取最高权重：${maxVal}`, "success");
+            setTimeout(clearHighlights, 1000);
+            isAnimating = false;
+        }
+
+        async function heapifyDown(idx) {
+            let curr = idx;
+            const len = heap.length;
+
+            while(true) {
+                let left = 2 * curr + 1;
+                let right = 2 * curr + 2;
+                let largest = curr;
+
+                // 寻找左右孩子中最大的一个
+                if (left < len && heap[left].val > heap[largest].val) largest = left;
+                if (right < len && heap[right].val > heap[largest].val) largest = right;
+
+                if (largest === curr) {
+                    addLog(`Node [${curr}] is larger than children. Sink finished.`, "text-gray-400");
+                    break;
+                }
+
+                // 视觉：比较
+                const nodeCurr = document.getElementById(`node-${curr}`);
+                const nodeLargest = document.getElementById(`node-${largest}`);
+                const edge = document.getElementById(`edge-${curr}-${largest}`);
+                
+                nodeCurr.classList.add('target-compare'); nodeLargest.classList.add('target-compare');
+                document.getElementById(`arr-box-${curr}`).classList.add('arr-target-compare');
+                document.getElementById(`arr-box-${largest}`).classList.add('arr-target-compare');
+                if(edge) edge.classList.add('edge-compare');
+
+                addLog(`Compare [${curr}](${heap[curr].val}) with Largest Child [${largest}](${heap[largest].val})`, "text-cyan-300");
+                await sleep(800);
+
+                addLog(`Child is larger. SINK DOWN! (发生交换)`, "text-fuchsia-400 font-bold");
+                if(edge) { edge.classList.remove('edge-compare'); edge.classList.add('edge-swap'); }
+
+                // 逻辑交换
+                let temp = heap[curr];
+                heap[curr] = heap[largest];
+                heap[largest] = temp;
+
+                // 视觉重绘
+                nodeCurr.classList.remove('target-compare'); nodeLargest.classList.remove('target-compare');
+                renderTreeVisuals();
+                
+                document.getElementById(`node-${curr}`).classList.add('target-swap');
+                document.getElementById(`node-${largest}`).classList.add('target-swap');
+                document.getElementById(`arr-box-${curr}`).classList.add('arr-target-swap');
+                document.getElementById(`arr-box-${largest}`).classList.add('arr-target-swap');
+                
+                await sleep(800);
+                curr = largest;
+            }
+        }
+
+        async function buildRandomHeap() {
+            if(isAnimating) return;
+            const remains = MAX_NODES - heap.length;
+            if(remains <= 0) return;
+            
+            const numToInsert = Math.min(remains, 5); // 每次塞5个
+            for(let i=0; i<numToInsert; i++) {
+                document.getElementById('inp-insert').value = Math.floor(Math.random() * 90) + 10;
+                await handleInsert();
+            }
+        }
+
+        function resetHeap() {
+            if(isAnimating) return;
+            heap = []; nodeIdCounter = 0;
+            renderTreeVisuals();
+            codeLog.innerHTML = '<div>> HEAP PURGED.</div>';
+        }
+
+
+        // ==========================================
+        // 视图 2：优先队列应用层 (Task Scheduler)
+        // ==========================================
+        let appPQ = []; // {name, weight}
+        const qListEl = document.getElementById('app-queue-list');
+        const qCountEl = document.getElementById('app-q-count');
+        const btnProcess = document.getElementById('btn-process');
+
+        function appAddTask(presetName = null, presetWeight = null) {
+            const name = presetName || document.getElementById('app-task-name').value;
+            const weight = presetWeight || parseInt(document.getElementById('app-task-weight').value);
+            
+            if(!name) { showToast('Task name empty!'); return; }
+            if(isNaN(weight)) { showToast('Invalid weight!'); return; }
+
+            document.getElementById('app-task-name').value = name;
+            document.getElementById('app-task-weight').value = weight;
+        }
+
+        function renderAppQueue() {
+            qListEl.innerHTML = '';
+            qCountEl.innerText = `${appPQ.length} TASKS`;
+            btnProcess.disabled = (appPQ.length === 0);
+
+            if(appPQ.length === 0) {
+                qListEl.innerHTML = '<div class="text-center text-gray-600 font-sci-fi mt-10">Queue is empty.</div>';
+                return;
+            }
+
+            // 在视觉上，我们将其直接以排序后的形态展示，帮助理解“优先级决定排队顺序”
+            // 真实底层是一棵堆树，但对应用层来说它表现得像一个随时维持最大值在最前面的队列
+            const sortedView = [...appPQ].sort((a,b) => b.weight - a.weight);
+
+            sortedView.forEach((task, i) => {
+                let colorClass = 'border-emerald-500 text-emerald-400';
+                if(task.weight >= 80) colorClass = 'border-red-500 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.3)]';
+                else if (task.weight >= 40) colorClass = 'border-yellow-400 text-yellow-400';
+
+                qListEl.innerHTML += `
+                    <div class="task-item ${colorClass} ${i===0 ? 'bg-black border-l-8' : ''}">
+                        <div class="flex flex-col">
+                            <span class="font-bold text-sm">${task.name}</span>
+                            ${i===0 ? '<span class="text-[9px] text-fuchsia-400 font-sci-fi">NEXT IN LINE (TOP VIP)</span>' : ''}
+                        </div>
+                        <div class="font-sci-fi text-xl font-black">${task.weight}</div>
+                    </div>
+                `;
+            });
+        }
+
+        // 简化的隐藏堆逻辑，服务于 UI
+        function appSubmitTask() {
+            const name = document.getElementById('app-task-name').value;
+            const weight = parseInt(document.getElementById('app-task-weight').value);
+            if(!name || isNaN(weight)) return;
+
+            appPQ.push({name, weight});
+            renderAppQueue();
+            showToast(`Task Encoded: Priority ${weight}`, 'success');
+            
+            // 随机生成下一个备选
+            const rndTasks = ["引擎冷却", "武器校准", "全舰广播", "雷达扫描"];
+            document.getElementById('app-task-name').value = rndTasks[Math.floor(Math.random()*rndTasks.length)];
+            document.getElementById('app-task-weight').value = Math.floor(Math.random() * 99) + 1;
+        }
+
+        async function appProcessNext() {
+            if(appPQ.length === 0) return;
+            
+            // 找到并移除最大权重的任务（模拟 Extract Max）
+            let maxIdx = 0;
+            for(let i=1; i<appPQ.length; i++) {
+                if(appPQ[i].weight > appPQ[maxIdx].weight) maxIdx = i;
+            }
+            
+            const task = appPQ[maxIdx];
+            appPQ.splice(maxIdx, 1);
+            renderAppQueue();
+            
+            showToast(`PROCESSING VIP TASK: [${task.name}] (Weight: ${task.weight})`, 'success');
+        }
+
+
+        // --- 预加载 ---
+        window.onload = async () => {
+            initArrayUI();
+            document.getElementById('view-engine').style.display = 'grid';
+            await sleep(500);
+            
+            // 预塞入几个节点构成初始堆
+            document.getElementById('inp-insert').value = 95; await handleInsert();
+            document.getElementById('inp-insert').value = 40; await handleInsert();
+            document.getElementById('inp-insert').value = 60; await handleInsert();
+            document.getElementById('inp-insert').value = 15; await handleInsert();
+        };
+
+    </script>
+</body>
+</html>
