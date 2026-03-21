@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星华大学：分治算法</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Noto+Sans+SC:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #050814;
+            font-family: 'Noto Sans SC', sans-serif;
+            color: #e2e8f0;
+            overflow-x: hidden;
+            background-image:
+                radial-gradient(circle at 20% 40%, rgba(0, 240, 255, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 80% 60%, rgba(255, 215, 0, 0.03) 0%, transparent 40%);
+        }
+        .font-sci-fi { font-family: 'Orbitron', sans-serif; }
+        .glass-panel {
+            background: rgba(11, 15, 25, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.05);
+        }
+        .tab-bar {
+            display: flex;
+            flex-wrap: wrap;
+            border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+        }
+        .tab-btn {
+            flex: 1;
+            min-width: 140px;
+            padding: 14px 12px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            font-size: 0.7rem;
+            color: #9ca3af;
+            transition: all 0.3s;
+            border-bottom: 2px solid transparent;
+        }
+        .tab-btn:hover { color: #67e8f9; }
+        .tab-btn.active {
+            color: #00F0FF;
+            border-bottom-color: #00F0FF;
+            text-shadow: 0 0 8px rgba(0, 240, 255, 0.6);
+        }
+        .code-box {
+            background: rgba(0,0,0,0.5);
+            border: 1px dashed rgba(0,240,255,0.25);
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-family: 'Orbitron', monospace;
+            font-size: 11px;
+            line-height: 1.55;
+            overflow-x: auto;
+        }
+        .arr-cell {
+            min-width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', monospace;
+            font-weight: bold;
+            font-size: 13px;
+            transition: all 0.25s ease;
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            background: rgba(0, 0, 0, 0.4);
+        }
+        .arr-cell.out { opacity: 0.3; }
+        .arr-cell.range { border-color: rgba(16, 185, 129, 0.6); color: #34d399; }
+        .arr-cell.mid { background: rgba(0, 240, 255, 0.3); border-color: #00F0FF; color: #fff; box-shadow: 0 0 16px rgba(0, 240, 255, 0.5); }
+        .arr-cell.found { background: rgba(16, 185, 129, 0.45); border-color: #10b981; color: #10b981; }
+        .step-log {
+            min-height: 72px;
+            background: rgba(0,0,0,0.35);
+            border: 1px solid rgba(0,240,255,0.15);
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 13px;
+            color: #cbd5e1;
+            line-height: 1.5;
+        }
+        .peg {
+            width: 28%;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            position: relative;
+        }
+        .peg-stick {
+            position: absolute;
+            bottom: 28px;
+            width: 6px;
+            height: 160px;
+            background: linear-gradient(to top, rgba(100,116,139,0.8), rgba(148,163,184,0.4));
+            border-radius: 3px;
+        }
+        .peg-base {
+            width: 90%;
+            height: 12px;
+            background: rgba(71, 85, 105, 0.6);
+            border-radius: 4px;
+            border: 1px solid rgba(148,163,184,0.3);
+        }
+        .disk {
+            height: 22px;
+            border-radius: 6px;
+            margin-bottom: 2px;
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: transform 0.35s ease, box-shadow 0.2s;
+        }
+        .disk.moving { box-shadow: 0 0 20px rgba(0,240,255,0.6); transform: scale(1.05); }
+        button { transition: all 0.2s; }
+        button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 0 12px rgba(0,240,255,0.3); }
+        button:disabled { opacity: 0.45; cursor: not-allowed; }
+        input[type=range] { accent-color: #00F0FF; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-6 md:p-10 pt-20 md:pt-10">
+
+    <a href="../../index.html" class="fixed top-4 left-4 md:top-6 md:left-6 z-50 flex items-center gap-2 px-3 py-2 md:px-4 md:py-2 rounded border border-cyan-500/30 bg-black/60 backdrop-blur-md text-cyan-500/70 hover:text-cyan-300 hover:border-cyan-400 hover:shadow-[0_0_15px_rgba(0,240,255,0.4)] transition-all font-sci-fi text-xs md:text-sm group text-decoration-none">
+        <svg class="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        <span class="hidden md:inline tracking-wider">MAIN TERMINAL</span>
+    </a>
+
+    <div class="text-center mb-8 w-full max-w-5xl mt-6 md:mt-0">
+        <h1 class="text-3xl md:text-4xl font-sci-fi font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-amber-400 mb-2 drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
+            分治算法
+        </h1>
+        <p class="text-cyan-400/70 text-sm tracking-widest font-sci-fi">DIVIDE · CONQUER · MERGE</p>
+    </div>
+
+    <div class="w-full max-w-5xl flex flex-col gap-6">
+        <div class="glass-panel rounded-2xl p-6">
+            <h2 class="text-xl font-bold text-cyan-300 font-sci-fi mb-4">分治三步</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-300">
+                <div class="border-l-4 border-cyan-500/70 pl-4">
+                    <h3 class="font-bold text-cyan-400 mb-1 font-sci-fi">1. Divide 分解</h3>
+                    <p class="leading-relaxed">把原问题划分成若干个规模更小的<strong>同类子问题</strong>（通常规模大致减半）。</p>
+                </div>
+                <div class="border-l-4 border-amber-500/70 pl-4">
+                    <h3 class="font-bold text-amber-400 mb-1 font-sci-fi">2. Conquer 解决</h3>
+                    <p class="leading-relaxed">递归求解子问题；若规模足够小则<strong>直接求解</strong>（递归基）。</p>
+                </div>
+                <div class="border-l-4 border-emerald-500/70 pl-4">
+                    <h3 class="font-bold text-emerald-400 mb-1 font-sci-fi">3. Combine 合并</h3>
+                    <p class="leading-relaxed">若有需要，把子问题的解<strong>合并</strong>成原问题的解（有些问题“合并”为空操作）。</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-panel rounded-2xl overflow-hidden">
+            <div class="tab-bar bg-black/20">
+                <button type="button" class="tab-btn active" data-tab="search">分治搜索</button>
+                <button type="button" class="tab-btn" data-tab="tree">构建平衡树</button>
+                <button type="button" class="tab-btn" data-tab="hanoi">汉诺塔</button>
+            </div>
+
+            <!-- 分治搜索：二分 -->
+            <div id="panel-search" class="tab-panel p-6 md:p-8 flex flex-col gap-6">
+                <h2 class="text-xl font-bold text-cyan-300 font-sci-fi">分治搜索：二分查找</h2>
+                <p class="text-sm text-gray-400 leading-relaxed">
+                    在<strong>有序数组</strong>上，每次用中点将搜索区间分成两半，舍弃不可能包含目标的一半，区间长度近似减半。这是典型的「分解 → 只在一边递归」的分治策略。
+                </p>
+                <div class="code-box">
+                    <pre class="text-cyan-200/90">binarySearch(arr, target, left, right):
+    if left > right: return 未找到
+    mid = (left + right) / 2
+    if arr[mid] == target: return mid          // 子问题已足够小
+    if arr[mid] &lt; target: 只在右半继续         // 分治：舍弃左半
+    else: 只在左半继续</pre>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1 font-sci-fi">数组长度</label>
+                        <input id="dcSearchLen" type="number" min="5" max="24" value="12" class="w-full rounded bg-black/40 border border-cyan-500/20 px-3 py-2 text-white text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1 font-sci-fi">目标值（可空则随机）</label>
+                        <input id="dcSearchTarget" type="number" class="w-full rounded bg-black/40 border border-cyan-500/20 px-3 py-2 text-white text-sm" placeholder="随机">
+                    </div>
+                    <div class="flex items-end gap-2 flex-wrap">
+                        <button type="button" id="dcSearchGen" class="px-4 py-2 rounded bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 font-sci-fi text-sm">生成有序数组</button>
+                    </div>
+                </div>
+                <div id="dcSearchArray" class="flex flex-wrap gap-2 justify-center min-h-[48px]"></div>
+                <div class="flex flex-wrap gap-2 justify-center items-center">
+                    <button type="button" id="dcSearchPrev" class="px-4 py-2 rounded bg-slate-600/40 border border-slate-500/40 text-slate-200 font-sci-fi text-sm" disabled>上一步</button>
+                    <button type="button" id="dcSearchNext" class="px-4 py-2 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 font-sci-fi text-sm" disabled>下一步</button>
+                    <button type="button" id="dcSearchAuto" class="px-4 py-2 rounded bg-violet-500/20 border border-violet-400/40 text-violet-200 font-sci-fi text-sm" disabled>自动播放</button>
+                    <label class="flex items-center gap-2 text-xs text-gray-400 font-sci-fi ml-2">
+                        <span>速度</span>
+                        <input id="dcSearchSpeed" type="range" min="200" max="1200" value="600" class="w-24">
+                    </label>
+                </div>
+                <div id="dcSearchLog" class="step-log font-sci-fi text-xs md:text-sm">点击「生成有序数组」开始。</div>
+            </div>
+
+            <!-- 构建平衡 BST -->
+            <div id="panel-tree" class="tab-panel p-6 md:p-8 flex-col gap-6 hidden">
+                <h2 class="text-xl font-bold text-cyan-300 font-sci-fi">分治构建：有序数组 → 平衡二叉搜索树</h2>
+                <p class="text-sm text-gray-400 leading-relaxed">
+                    每次取当前区间的<strong>中点</strong>作为根，左半区间递归建左子树，右半区间递归建右子树。这样得到的 BST 高度为 O(log n)，是中序遍历等于原有序序列的经典构造。
+                </p>
+                <div class="code-box">
+                    <pre class="text-cyan-200/90">build(arr, left, right):
+    if left > right: return null
+    mid = (left + right) / 2
+    node = new Node(arr[mid])
+    node.left  = build(arr, left, mid - 1)
+    node.right = build(arr, mid + 1, right)
+    return node</pre>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1 font-sci-fi">节点个数 (3–15)</label>
+                        <input id="dcTreeN" type="number" min="3" max="15" value="7" class="w-full rounded bg-black/40 border border-cyan-500/20 px-3 py-2 text-white text-sm">
+                    </div>
+                    <div class="flex items-end">
+                        <button type="button" id="dcTreeReset" class="px-4 py-2 rounded bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 font-sci-fi text-sm">重建 1…n</button>
+                    </div>
+                </div>
+                <div id="dcTreeArray" class="flex flex-wrap gap-2 justify-center min-h-[48px]"></div>
+                <div class="rounded-xl border border-cyan-500/20 bg-black/30 overflow-x-auto">
+                    <svg id="dcTreeSvg" class="w-full" style="min-height:280px" viewBox="0 0 560 280" preserveAspectRatio="xMidYMid meet"></svg>
+                </div>
+                <div class="flex flex-wrap gap-2 justify-center items-center">
+                    <button type="button" id="dcTreePrev" class="px-4 py-2 rounded bg-slate-600/40 border border-slate-500/40 text-slate-200 font-sci-fi text-sm" disabled>上一步</button>
+                    <button type="button" id="dcTreeNext" class="px-4 py-2 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 font-sci-fi text-sm" disabled>下一步</button>
+                    <button type="button" id="dcTreeAuto" class="px-4 py-2 rounded bg-violet-500/20 border border-violet-400/40 text-violet-200 font-sci-fi text-sm" disabled>自动播放</button>
+                    <label class="flex items-center gap-2 text-xs text-gray-400 font-sci-fi ml-2">
+                        <span>速度</span>
+                        <input id="dcTreeSpeed" type="range" min="250" max="1400" value="700" class="w-24">
+                    </label>
+                </div>
+                <div id="dcTreeLog" class="step-log font-sci-fi text-xs md:text-sm"></div>
+            </div>
+
+            <!-- 汉诺塔 -->
+            <div id="panel-hanoi" class="tab-panel p-6 md:p-8 flex-col gap-6 hidden">
+                <h2 class="text-xl font-bold text-cyan-300 font-sci-fi">汉诺塔：递归分治</h2>
+                <p class="text-sm text-gray-400 leading-relaxed">
+                    将 n 个盘子从 A 移到 C：先把上面 n−1 个当作子问题移到 B（<strong>分治</strong>），再把最大盘移到 C（<strong>基</strong>），最后把 n−1 个从 B 移到 C。总步数 <span class="text-amber-300 font-sci-fi">2ⁿ − 1</span>。
+                </p>
+                <div class="code-box">
+                    <pre class="text-cyan-200/90">hanoi(n, from, aux, to):
+    if n == 1: move disk 1 from → to; return
+    hanoi(n-1, from, to, aux)   // 子问题：小盘先到辅助柱
+    move disk n from → to
+    hanoi(n-1, aux, from, to)</pre>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1 font-sci-fi">盘片数量 (1–8)</label>
+                        <input id="dcHanoiN" type="number" min="1" max="8" value="4" class="w-full rounded bg-black/40 border border-cyan-500/20 px-3 py-2 text-white text-sm">
+                    </div>
+                    <div class="flex items-end">
+                        <button type="button" id="dcHanoiReset" class="px-4 py-2 rounded bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 font-sci-fi text-sm">初始化</button>
+                    </div>
+                </div>
+                <div class="flex justify-between gap-2 px-2 md:px-8 max-w-xl mx-auto w-full" id="dcHanoiPegs">
+                    <div class="peg" data-peg="0">
+                        <div class="peg-stick"></div>
+                        <div class="flex flex-col-reverse items-center w-full pb-1" id="dcHanoiStack0"></div>
+                        <div class="peg-base"></div>
+                        <span class="text-xs text-cyan-500/80 font-sci-fi mt-2">A</span>
+                    </div>
+                    <div class="peg" data-peg="1">
+                        <div class="peg-stick"></div>
+                        <div class="flex flex-col-reverse items-center w-full pb-1" id="dcHanoiStack1"></div>
+                        <div class="peg-base"></div>
+                        <span class="text-xs text-cyan-500/80 font-sci-fi mt-2">B</span>
+                    </div>
+                    <div class="peg" data-peg="2">
+                        <div class="peg-stick"></div>
+                        <div class="flex flex-col-reverse items-center w-full pb-1" id="dcHanoiStack2"></div>
+                        <div class="peg-base"></div>
+                        <span class="text-xs text-cyan-500/80 font-sci-fi mt-2">C</span>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-2 justify-center items-center">
+                    <button type="button" id="dcHanoiPrev" class="px-4 py-2 rounded bg-slate-600/40 border border-slate-500/40 text-slate-200 font-sci-fi text-sm" disabled>上一步</button>
+                    <button type="button" id="dcHanoiNext" class="px-4 py-2 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 font-sci-fi text-sm" disabled>下一步</button>
+                    <button type="button" id="dcHanoiAuto" class="px-4 py-2 rounded bg-violet-500/20 border border-violet-400/40 text-violet-200 font-sci-fi text-sm" disabled>自动播放</button>
+                    <label class="flex items-center gap-2 text-xs text-gray-400 font-sci-fi ml-2">
+                        <span>速度</span>
+                        <input id="dcHanoiSpeed" type="range" min="150" max="1000" value="400" class="w-24">
+                    </label>
+                </div>
+                <div id="dcHanoiLog" class="step-log font-sci-fi text-xs md:text-sm"></div>
+                <p id="dcHanoiMeta" class="text-center text-xs text-gray-500 font-sci-fi"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        const tabs = document.querySelectorAll('.tab-btn');
+        const panels = {
+            search: document.getElementById('panel-search'),
+            tree: document.getElementById('panel-tree'),
+            hanoi: document.getElementById('panel-hanoi')
+        };
+
+        tabs.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = btn.dataset.tab;
+                tabs.forEach(b => b.classList.toggle('active', b === btn));
+                Object.keys(panels).forEach(k => {
+                    panels[k].classList.toggle('hidden', k !== id);
+                    if (k !== id) panels[k].classList.remove('flex');
+                    else panels[k].classList.add('flex');
+                });
+            });
+        });
+
+        function sleep(ms) {
+            return new Promise(r => setTimeout(r, ms));
+        }
+
+        /* ---------- 分治搜索 ---------- */
+        const dcSearch = {
+            arr: [],
+            target: 0,
+            steps: [],
+            idx: -1,
+            autoTimer: null
+        };
+
+        function buildBinarySearchSteps(arr, target) {
+            const steps = [];
+            let left = 0, right = arr.length - 1;
+            while (left <= right) {
+                const mid = (left + right) >> 1;
+                steps.push({ left, right, mid, done: false });
+                if (arr[mid] === target) {
+                    steps[steps.length - 1].done = true;
+                    steps[steps.length - 1].found = true;
+                    break;
+                }
+                if (arr[mid] < target) left = mid + 1;
+                else right = mid - 1;
+            }
+            if (steps.length && !steps[steps.length - 1].found && left > right) {
+                steps.push({ left, right, mid: -1, done: true, found: false });
+            }
+            return steps;
+        }
+
+        function renderSearchArray() {
+            const el = document.getElementById('dcSearchArray');
+            el.innerHTML = '';
+            const step = dcSearch.idx >= 0 ? dcSearch.steps[dcSearch.idx] : null;
+            dcSearch.arr.forEach((v, i) => {
+                const cell = document.createElement('div');
+                cell.className = 'arr-cell';
+                cell.textContent = v;
+                if (step && step.mid >= 0) {
+                    if (i < step.left || i > step.right) cell.classList.add('out');
+                    else {
+                        cell.classList.add('range');
+                        if (i === step.mid) cell.classList.add('mid');
+                    }
+                    if (step.found && i === step.mid) cell.classList.remove('out'), cell.classList.add('found');
+                }
+                el.appendChild(cell);
+            });
+        }
+
+        function setSearchLog() {
+            const log = document.getElementById('dcSearchLog');
+            if (dcSearch.idx < 0) {
+                log.textContent = '点击「生成有序数组」开始。';
+                return;
+            }
+            const s = dcSearch.steps[dcSearch.idx];
+            if (!s || s.mid < 0) {
+                log.textContent = '区间为空：目标不在数组中（分治结束）。';
+                return;
+            }
+            const { left, right, mid } = s;
+            const v = dcSearch.arr[mid];
+            let msg = `步骤 ${dcSearch.idx + 1} / ${dcSearch.steps.length}：当前区间 [${left}, ${right}]，中点 mid = ${mid}，arr[mid] = ${v}。`;
+            if (s.found) msg += v === dcSearch.target ? ' 等于目标，查找成功。' : '';
+            else if (!s.done) {
+                if (v < dcSearch.target) msg += ` 小于目标 ${dcSearch.target}，舍弃左半，在 [${mid + 1}, ${right}] 继续。`;
+                else msg += ` 大于目标 ${dcSearch.target}，舍弃右半，在 [${left}, ${mid - 1}] 继续。`;
+            } else if (!s.found) msg += ' 未找到目标。';
+            log.textContent = msg;
+        }
+
+        function searchUiState() {
+            const has = dcSearch.steps.length > 0;
+            document.getElementById('dcSearchPrev').disabled = !has || dcSearch.idx <= 0;
+            document.getElementById('dcSearchNext').disabled = !has || dcSearch.idx >= dcSearch.steps.length - 1;
+            document.getElementById('dcSearchAuto').disabled = !has;
+        }
+
+        document.getElementById('dcSearchGen').addEventListener('click', () => {
+            if (dcSearch.autoTimer) clearInterval(dcSearch.autoTimer);
+            dcSearch.autoTimer = null;
+            let n = parseInt(document.getElementById('dcSearchLen').value, 10) || 12;
+            n = Math.max(5, Math.min(24, n));
+            document.getElementById('dcSearchLen').value = n;
+            const arr = [];
+            let x = Math.floor(Math.random() * 8) + 1;
+            for (let i = 0; i < n; i++) {
+                x += Math.floor(Math.random() * 4) + 1;
+                arr.push(x);
+            }
+            dcSearch.arr = arr;
+            let t = document.getElementById('dcSearchTarget').value.trim();
+            dcSearch.target = t === '' ? arr[Math.floor(Math.random() * arr.length)] : parseInt(t, 10);
+            if (Number.isNaN(dcSearch.target)) dcSearch.target = arr[0];
+            document.getElementById('dcSearchTarget').value = dcSearch.target;
+            dcSearch.steps = buildBinarySearchSteps(dcSearch.arr, dcSearch.target);
+            dcSearch.idx = dcSearch.steps.length ? 0 : -1;
+            renderSearchArray();
+            setSearchLog();
+            searchUiState();
+        });
+
+        document.getElementById('dcSearchPrev').addEventListener('click', () => {
+            if (dcSearch.idx > 0) { dcSearch.idx--; renderSearchArray(); setSearchLog(); searchUiState(); }
+        });
+        document.getElementById('dcSearchNext').addEventListener('click', () => {
+            if (dcSearch.idx < dcSearch.steps.length - 1) { dcSearch.idx++; renderSearchArray(); setSearchLog(); searchUiState(); }
+        });
+        document.getElementById('dcSearchAuto').addEventListener('click', function auto() {
+            if (dcSearch.autoTimer) {
+                clearInterval(dcSearch.autoTimer);
+                dcSearch.autoTimer = null;
+                this.textContent = '自动播放';
+                return;
+            }
+            if (dcSearch.idx >= dcSearch.steps.length - 1) dcSearch.idx = -1;
+            const spd = parseInt(document.getElementById('dcSearchSpeed').value, 10);
+            this.textContent = '停止';
+            dcSearch.autoTimer = setInterval(() => {
+                if (dcSearch.idx < dcSearch.steps.length - 1) {
+                    dcSearch.idx++;
+                    renderSearchArray();
+                    setSearchLog();
+                    searchUiState();
+                } else {
+                    clearInterval(dcSearch.autoTimer);
+                    dcSearch.autoTimer = null;
+                    document.getElementById('dcSearchAuto').textContent = '自动播放';
+                }
+            }, 1100 - spd);
+        });
+
+        /* ---------- 构建树 ---------- */
+        const dcTree = {
+            arr: [],
+            preorderNodes: [],
+            idx: -1,
+            autoTimer: null
+        };
+
+        function buildBSTNodes(arr, l, r, list) {
+            if (l > r) return null;
+            const mid = (l + r) >> 1;
+            const node = { val: arr[mid], l, r, mid, left: null, right: null, x: 0, y: 0 };
+            list.push(node);
+            node.left = buildBSTNodes(arr, l, mid - 1, list);
+            node.right = buildBSTNodes(arr, mid + 1, r, list);
+            return node;
+        }
+
+        function layoutTree(root) {
+            let x = 0;
+            function dfs(n, depth) {
+                if (!n) return;
+                dfs(n.left, depth + 1);
+                n.x = x++;
+                n.y = depth;
+                dfs(n.right, depth + 1);
+            }
+            dfs(root, 0);
+        }
+
+        function drawTreeSVG(stepIdx) {
+            const svg = document.getElementById('dcTreeSvg');
+            const W = 560, H = 280;
+            const margin = { t: 28, b: 28, l: 28, r: 28 };
+            const nodes = dcTree.preorderNodes;
+            if (!nodes.length) {
+                svg.innerHTML = '';
+                return;
+            }
+            const xs = nodes.map(n => n.x);
+            const minX = Math.min(...xs), maxX = Math.max(...xs);
+            const span = Math.max(maxX - minX, 1);
+            const toCX = x => margin.l + ((x - minX) / span) * (W - margin.l - margin.r);
+            const rowH = 52;
+            const toCY = y => margin.t + y * rowH + 20;
+
+            const visible = new Set(nodes.slice(0, stepIdx + 1));
+            let lines = '';
+            nodes.forEach(n => {
+                if (!visible.has(n)) return;
+                ['left', 'right'].forEach(side => {
+                    const c = n[side];
+                    if (c && visible.has(c)) {
+                        lines += `<line x1="${toCX(n.x)}" y1="${toCY(n.y)}" x2="${toCX(c.x)}" y2="${toCY(c.y)}" stroke="rgba(0,240,255,0.35)" stroke-width="1.5"/>`;
+                    }
+                });
+            });
+            let circles = '';
+            nodes.forEach((n, i) => {
+                if (!visible.has(n)) return;
+                const cx = toCX(n.x), cy = toCY(n.y);
+                const isNew = i === stepIdx;
+                const fill = isNew ? 'rgba(0,240,255,0.35)' : 'rgba(15,23,42,0.9)';
+                const stroke = isNew ? '#00F0FF' : 'rgba(0,240,255,0.5)';
+                const sw = isNew ? 2.5 : 1.5;
+                circles += `<circle cx="${cx}" cy="${cy}" r="18" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+                circles += `<text x="${cx}" y="${cy + 5}" text-anchor="middle" fill="#e2e8f0" font-family="Orbitron,sans-serif" font-size="13" font-weight="bold">${n.val}</text>`;
+            });
+            svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+            svg.innerHTML = lines + circles;
+        }
+
+        function renderTreeArray() {
+            const el = document.getElementById('dcTreeArray');
+            el.innerHTML = '';
+            const node = dcTree.idx >= 0 ? dcTree.preorderNodes[dcTree.idx] : null;
+            dcTree.arr.forEach((v, i) => {
+                const cell = document.createElement('div');
+                cell.className = 'arr-cell';
+                cell.textContent = v;
+                if (node) {
+                    if (i >= node.l && i <= node.r) {
+                        cell.classList.add('range');
+                        if (i === node.mid) cell.classList.add('mid');
+                    } else cell.classList.add('out');
+                }
+                el.appendChild(cell);
+            });
+        }
+
+        function setTreeLog() {
+            const log = document.getElementById('dcTreeLog');
+            if (dcTree.idx < 0 || !dcTree.preorderNodes.length) {
+                log.textContent = '点击「重建」生成步骤。';
+                return;
+            }
+            const n = dcTree.preorderNodes[dcTree.idx];
+            log.textContent = `步骤 ${dcTree.idx + 1} / ${dcTree.preorderNodes.length}：在区间 [${n.l}, ${n.r}] 取中点下标 ${n.mid}，值 ${n.val} 作为（子）树根，递归构建左 [${n.l}, ${n.mid - 1}] 与右 [${n.mid + 1}, ${n.r}]。`;
+        }
+
+        function treeUiState() {
+            const has = dcTree.preorderNodes.length > 0;
+            document.getElementById('dcTreePrev').disabled = !has || dcTree.idx <= 0;
+            document.getElementById('dcTreeNext').disabled = !has || dcTree.idx >= dcTree.preorderNodes.length - 1;
+            document.getElementById('dcTreeAuto').disabled = !has;
+        }
+
+        function initTree() {
+            if (dcTree.autoTimer) clearInterval(dcTree.autoTimer);
+            dcTree.autoTimer = null;
+            let n = parseInt(document.getElementById('dcTreeN').value, 10) || 7;
+            n = Math.max(3, Math.min(15, n));
+            document.getElementById('dcTreeN').value = n;
+            dcTree.arr = Array.from({ length: n }, (_, i) => i + 1);
+            dcTree.preorderNodes = [];
+            const root = buildBSTNodes(dcTree.arr, 0, n - 1, dcTree.preorderNodes);
+            layoutTree(root);
+            dcTree.idx = dcTree.preorderNodes.length ? 0 : -1;
+            renderTreeArray();
+            drawTreeSVG(dcTree.idx);
+            setTreeLog();
+            treeUiState();
+        }
+
+        document.getElementById('dcTreeReset').addEventListener('click', initTree);
+        document.getElementById('dcTreePrev').addEventListener('click', () => {
+            if (dcTree.idx > 0) { dcTree.idx--; renderTreeArray(); drawTreeSVG(dcTree.idx); setTreeLog(); treeUiState(); }
+        });
+        document.getElementById('dcTreeNext').addEventListener('click', () => {
+            if (dcTree.idx < dcTree.preorderNodes.length - 1) { dcTree.idx++; renderTreeArray(); drawTreeSVG(dcTree.idx); setTreeLog(); treeUiState(); }
+        });
+        document.getElementById('dcTreeAuto').addEventListener('click', function () {
+            if (dcTree.autoTimer) {
+                clearInterval(dcTree.autoTimer);
+                dcTree.autoTimer = null;
+                this.textContent = '自动播放';
+                return;
+            }
+            if (dcTree.idx >= dcTree.preorderNodes.length - 1) dcTree.idx = -1;
+            const spd = parseInt(document.getElementById('dcTreeSpeed').value, 10);
+            this.textContent = '停止';
+            dcTree.autoTimer = setInterval(() => {
+                if (dcTree.idx < dcTree.preorderNodes.length - 1) {
+                    dcTree.idx++;
+                    renderTreeArray();
+                    drawTreeSVG(dcTree.idx);
+                    setTreeLog();
+                    treeUiState();
+                } else {
+                    clearInterval(dcTree.autoTimer);
+                    dcTree.autoTimer = null;
+                    document.getElementById('dcTreeAuto').textContent = '自动播放';
+                }
+            }, 1250 - spd);
+        });
+
+        /* ---------- 汉诺塔 ---------- */
+        const dcHanoi = {
+            n: 4,
+            states: [],
+            idx: -1,
+            autoTimer: null,
+            diskColors: ['#22d3ee', '#a78bfa', '#fbbf24', '#f472b6', '#34d399', '#fb923c', '#60a5fa', '#c084fc']
+        };
+
+        function hanoiMoves(n, from, aux, to, out) {
+            if (n === 1) {
+                out.push({ disk: 1, from, to });
+                return;
+            }
+            hanoiMoves(n - 1, from, to, aux, out);
+            out.push({ disk: n, from, to });
+            hanoiMoves(n - 1, aux, from, to, out);
+        }
+
+        function simulateStates(n) {
+            const moves = [];
+            hanoiMoves(n, 0, 1, 2, moves);
+            const pegs = [[], [], []];
+            for (let i = n; i >= 1; i--) pegs[0].push(i);
+            const states = [pegs.map(p => [...p])];
+            moves.forEach(m => {
+                const from = pegs[m.from].pop();
+                pegs[m.to].push(from);
+                states.push(pegs.map(p => [...p]));
+            });
+            return { moves, states };
+        }
+
+        function renderHanoi() {
+            for (let p = 0; p < 3; p++) {
+                const stack = document.getElementById('dcHanoiStack' + p);
+                stack.innerHTML = '';
+            }
+            if (dcHanoi.idx < 0) return;
+            const pegs = dcHanoi.states[dcHanoi.idx];
+            const maxW = 110;
+            pegs.forEach((disks, pi) => {
+                const stack = document.getElementById('dcHanoiStack' + pi);
+                disks.forEach((d, di) => {
+                    const div = document.createElement('div');
+                    div.className = 'disk';
+                    const w = 36 + (d / dcHanoi.n) * (maxW - 36);
+                    div.style.width = w + 'px';
+                    div.style.background = `linear-gradient(90deg, ${dcHanoi.diskColors[(d - 1) % dcHanoi.diskColors.length]}, rgba(0,0,0,0.35))`;
+                    if (dcHanoi.idx > 0) {
+                        const moved = dcHanoi.moves[dcHanoi.idx - 1];
+                        if (moved && pi === moved.to && di === disks.length - 1 && d === moved.disk) {
+                            div.classList.add('moving');
+                        }
+                    }
+                    stack.appendChild(div);
+                });
+            });
+        }
+
+        function setHanoiLog() {
+            const log = document.getElementById('dcHanoiLog');
+            const meta = document.getElementById('dcHanoiMeta');
+            const names = ['A', 'B', 'C'];
+            if (dcHanoi.idx <= 0) {
+                log.textContent = dcHanoi.idx < 0 ? '点击「初始化」生成步骤。' : '初始：全部盘在 A，目标移到 C，可借助 B。';
+                meta.textContent = dcHanoi.moves.length ? `总步数：${dcHanoi.moves.length}（= 2^${dcHanoi.n} − 1）` : '';
+                return;
+            }
+            const m = dcHanoi.moves[dcHanoi.idx - 1];
+            log.textContent = `步骤 ${dcHanoi.idx} / ${dcHanoi.moves.length}：将盘片 ${m.disk} 从柱 ${names[m.from]} 移到柱 ${names[m.to]}。`;
+            meta.textContent = `总步数：${dcHanoi.moves.length}（= 2^${dcHanoi.n} − 1）`;
+        }
+
+        function hanoiUiState() {
+            const has = dcHanoi.states.length > 1;
+            document.getElementById('dcHanoiPrev').disabled = dcHanoi.idx <= 0;
+            document.getElementById('dcHanoiNext').disabled = !has || dcHanoi.idx >= dcHanoi.states.length - 1;
+            document.getElementById('dcHanoiAuto').disabled = !has;
+        }
+
+        function initHanoi() {
+            if (dcHanoi.autoTimer) clearInterval(dcHanoi.autoTimer);
+            dcHanoi.autoTimer = null;
+            let n = parseInt(document.getElementById('dcHanoiN').value, 10) || 4;
+            n = Math.max(1, Math.min(8, n));
+            document.getElementById('dcHanoiN').value = n;
+            dcHanoi.n = n;
+            const { moves, states } = simulateStates(n);
+            dcHanoi.moves = moves;
+            dcHanoi.states = states;
+            dcHanoi.idx = 0;
+            renderHanoi();
+            setHanoiLog();
+            hanoiUiState();
+        }
+
+        document.getElementById('dcHanoiReset').addEventListener('click', initHanoi);
+        document.getElementById('dcHanoiPrev').addEventListener('click', () => {
+            if (dcHanoi.idx > 0) { dcHanoi.idx--; renderHanoi(); setHanoiLog(); hanoiUiState(); }
+        });
+        document.getElementById('dcHanoiNext').addEventListener('click', () => {
+            if (dcHanoi.idx < dcHanoi.states.length - 1) { dcHanoi.idx++; renderHanoi(); setHanoiLog(); hanoiUiState(); }
+        });
+        document.getElementById('dcHanoiAuto').addEventListener('click', function () {
+            if (dcHanoi.autoTimer) {
+                clearInterval(dcHanoi.autoTimer);
+                dcHanoi.autoTimer = null;
+                this.textContent = '自动播放';
+                return;
+            }
+            const spd = parseInt(document.getElementById('dcHanoiSpeed').value, 10);
+            this.textContent = '停止';
+            dcHanoi.autoTimer = setInterval(() => {
+                if (dcHanoi.idx < dcHanoi.states.length - 1) {
+                    dcHanoi.idx++;
+                    renderHanoi();
+                    setHanoiLog();
+                    hanoiUiState();
+                } else {
+                    clearInterval(dcHanoi.autoTimer);
+                    dcHanoi.autoTimer = null;
+                    document.getElementById('dcHanoiAuto').textContent = '自动播放';
+                }
+            }, 1150 - spd);
+        });
+
+        document.getElementById('dcSearchGen').click();
+        initTree();
+        initHanoi();
+    })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星华大学：回溯算法</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Noto+Sans+SC:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #050814;
+            font-family: 'Noto Sans SC', sans-serif;
+            color: #e2e8f0;
+            overflow-x: hidden;
+            background-image:
+                radial-gradient(circle at 20% 40%, rgba(0, 240, 255, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 80% 60%, rgba(249, 115, 22, 0.03) 0%, transparent 40%);
+        }
+        .font-sci-fi { font-family: 'Orbitron', sans-serif; }
+        .glass-panel {
+            background: rgba(11, 15, 25, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.05);
+        }
+        .tab-bar {
+            display: flex;
+            flex-wrap: wrap;
+            border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+        }
+        .tab-btn {
+            flex: 1;
+            min-width: 120px;
+            padding: 12px 10px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            font-size: 0.7rem;
+            color: #9ca3af;
+            transition: all 0.3s;
+            border-bottom: 2px solid transparent;
+        }
+        .tab-btn:hover { color: #67e8f9; }
+        .tab-btn.active {
+            color: #00F0FF;
+            border-bottom-color: #00F0FF;
+            text-shadow: 0 0 8px rgba(0, 240, 255, 0.6);
+        }
+        .code-box {
+            background: rgba(0,0,0,0.5);
+            border: 1px dashed rgba(0,240,255,0.25);
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-family: 'Orbitron', monospace;
+            font-size: 11px;
+            line-height: 1.55;
+            overflow-x: auto;
+        }
+        .step-log {
+            min-height: 72px;
+            background: rgba(0,0,0,0.35);
+            border: 1px solid rgba(0,240,255,0.15);
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 13px;
+            color: #cbd5e1;
+            line-height: 1.5;
+        }
+        /* 全排列 / 子集和 元素格子 */
+        .elem-cell {
+            min-width: 42px;
+            height: 42px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', monospace;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.25s;
+            border: 1px solid rgba(0, 240, 255, 0.25);
+        }
+        .elem-cell.available { background: rgba(0,0,0,0.5); color: #94a3b8; }
+        .elem-cell.chosen { background: rgba(0, 240, 255, 0.25); border-color: #00F0FF; color: #00F0FF; }
+        .elem-cell.used { opacity: 0.4; color: #64748b; }
+        .elem-cell.included { background: rgba(16, 185, 129, 0.3); border-color: #10b981; color: #10b981; }
+        .elem-cell.excluded { opacity: 0.35; }
+        .elem-cell.current { box-shadow: 0 0 14px rgba(249, 115, 22, 0.6); border-color: #f97316; }
+        /* N皇后棋盘 */
+        .board-cell {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(0,240,255,0.15);
+            transition: all 0.2s;
+        }
+        .board-cell.light { background: rgba(30,41,59,0.6); }
+        .board-cell.dark { background: rgba(15,23,42,0.9); }
+        .board-cell.queen { background: rgba(249, 115, 22, 0.4); border-color: #f97316; }
+        .board-cell.conflict { background: rgba(239, 68, 68, 0.35); }
+        .board-cell.trying { box-shadow: inset 0 0 20px rgba(0,240,255,0.4); border-color: #00F0FF; }
+        .queen-symbol { font-size: 1.2rem; font-weight: bold; color: #fff; text-shadow: 0 0 6px rgba(0,0,0,0.8); }
+        button { transition: all 0.2s; }
+        button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 0 12px rgba(0,240,255,0.3); }
+        button:disabled { opacity: 0.45; cursor: not-allowed; }
+        input[type=range] { accent-color: #00F0FF; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-6 md:p-10 pt-20 md:pt-10">
+
+    <a href="../../index.html" class="fixed top-4 left-4 md:top-6 md:left-6 z-50 flex items-center gap-2 px-3 py-2 md:px-4 md:py-2 rounded border border-cyan-500/30 bg-black/60 backdrop-blur-md text-cyan-500/70 hover:text-cyan-300 hover:border-cyan-400 hover:shadow-[0_0_15px_rgba(0,240,255,0.4)] transition-all font-sci-fi text-xs md:text-sm group text-decoration-none">
+        <svg class="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        <span class="hidden md:inline tracking-wider">MAIN TERMINAL</span>
+    </a>
+
+    <div class="text-center mb-8 w-full max-w-5xl mt-6 md:mt-0">
+        <h1 class="text-3xl md:text-4xl font-sci-fi font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-orange-400 mb-2 drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
+            回溯算法
+        </h1>
+        <p class="text-cyan-400/70 text-sm tracking-widest font-sci-fi">CHOOSE · CONSTRAINT · BACKTRACK</p>
+    </div>
+
+    <div class="w-full max-w-5xl flex flex-col gap-6">
+        <div class="glass-panel rounded-2xl p-6">
+            <h2 class="text-xl font-bold text-cyan-300 font-sci-fi mb-4">回溯核心</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-300">
+                <div class="border-l-4 border-cyan-500/70 pl-4">
+                    <h3 class="font-bold text-cyan-400 mb-1 font-sci-fi">1. 选择</h3>
+                    <p class="leading-relaxed">在当前状态做一次<strong>决策</strong>（选哪个元素、放哪一列等），进入新状态。</p>
+                </div>
+                <div class="border-l-4 border-amber-500/70 pl-4">
+                    <h3 class="font-bold text-amber-400 mb-1 font-sci-fi">2. 约束</h3>
+                    <p class="leading-relaxed">检查是否满足条件；不满足则<strong>剪枝</strong>，不再往下搜。</p>
+                </div>
+                <div class="border-l-4 border-rose-500/70 pl-4">
+                    <h3 class="font-bold text-rose-400 mb-1 font-sci-fi">3. 回溯</h3>
+                    <p class="leading-relaxed">递归返回时<strong>撤销</strong>本次选择，恢复状态，尝试其他分支。</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-panel rounded-2xl overflow-hidden">
+            <div class="tab-bar bg-black/20">
+                <button type="button" class="tab-btn active" data-tab="perm">全排列</button>
+                <button type="button" class="tab-btn" data-tab="subset">子集和</button>
+                <button type="button" class="tab-btn" data-tab="queens">N皇后</button>
+            </div>
+
+            <!-- 全排列 -->
+            <div id="panel-perm" class="tab-panel p-6 md:p-8 flex flex-col gap-6">
+                <h2 class="text-xl font-bold text-cyan-300 font-sci-fi">全排列</h2>
+                <p class="text-sm text-gray-400 leading-relaxed">
+                    生成数组的<strong>所有排列</strong>。每次从未使用元素中选一个加入当前路径，递归；返回时回溯（撤销选择），再试下一个。
+                </p>
+                <div class="code-box">
+                    <pre class="text-cyan-200/90">permute(path, remaining):
+    if remaining 为空: 输出 path，return
+    for each x in remaining:
+        将 x 加入 path，从 remaining 移除
+        permute(path, remaining)
+        回溯：path 弹出，x 放回 remaining</pre>
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <label class="text-xs text-gray-400 font-sci-fi">元素个数 (3–5)</label>
+                    <input id="permN" type="number" min="3" max="5" value="4" class="w-16 rounded bg-black/40 border border-cyan-500/20 px-2 py-1.5 text-white text-sm">
+                    <button type="button" id="permReset" class="px-4 py-2 rounded bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 font-sci-fi text-sm">生成 1..n</button>
+                </div>
+                <div class="flex flex-wrap gap-2 items-center">
+                    <span class="text-xs text-gray-400 mr-2">当前路径：</span>
+                    <div id="permPath" class="flex flex-wrap gap-2 min-h-[44px]"></div>
+                </div>
+                <div class="flex flex-wrap gap-2 items-center">
+                    <span class="text-xs text-gray-400 mr-2">剩余可选：</span>
+                    <div id="permRemaining" class="flex flex-wrap gap-2 min-h-[44px]"></div>
+                </div>
+                <div class="flex flex-wrap gap-2 items-center">
+                    <button type="button" id="permPrev" class="px-4 py-2 rounded bg-slate-600/40 border border-slate-500/40 text-slate-200 font-sci-fi text-sm" disabled>上一步</button>
+                    <button type="button" id="permNext" class="px-4 py-2 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 font-sci-fi text-sm" disabled>下一步</button>
+                    <button type="button" id="permAuto" class="px-4 py-2 rounded bg-violet-500/20 border border-violet-400/40 text-violet-200 font-sci-fi text-sm" disabled>自动播放</button>
+                    <label class="flex items-center gap-2 text-xs text-gray-400 font-sci-fi ml-2">
+                        <span>速度</span><input id="permSpeed" type="range" min="150" max="900" value="450" class="w-20">
+                    </label>
+                </div>
+                <div id="permLog" class="step-log font-sci-fi text-xs md:text-sm"></div>
+            </div>
+
+            <!-- 子集和 -->
+            <div id="panel-subset" class="tab-panel p-6 md:p-8 flex flex-col gap-6 hidden">
+                <h2 class="text-xl font-bold text-cyan-300 font-sci-fi">子集和</h2>
+                <p class="text-sm text-gray-400 leading-relaxed">
+                    在数组中找若干元素，使其和等于目标值。对每个元素<strong>选或不选</strong>两种分支；若当前和已超目标则剪枝。
+                </p>
+                <div class="code-box">
+                    <pre class="text-cyan-200/90">subsetSum(idx, curSum, chosen):
+    if curSum == target: 输出 chosen，return
+    if idx == n 或 curSum > target: return
+    subsetSum(idx+1, curSum + arr[idx], chosen+arr[idx])  // 选
+    subsetSum(idx+1, curSum, chosen)                       // 不选</pre>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1 font-sci-fi">数组（逗号分隔）</label>
+                        <input id="subsetArr" type="text" value="2,3,5,7,9" class="w-full rounded bg-black/40 border border-cyan-500/20 px-3 py-2 text-white text-sm" placeholder="如 2,3,5,7">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1 font-sci-fi">目标和</label>
+                        <input id="subsetTarget" type="number" value="12" class="w-full rounded bg-black/40 border border-cyan-500/20 px-3 py-2 text-white text-sm">
+                    </div>
+                    <div class="flex items-end">
+                        <button type="button" id="subsetReset" class="px-4 py-2 rounded bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 font-sci-fi text-sm">开始搜索</button>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-2 items-center">
+                    <span class="text-xs text-gray-400 mr-2">当前子集：</span>
+                    <div id="subsetChosen" class="flex flex-wrap gap-2 min-h-[44px]"></div>
+                    <span class="text-cyan-400 ml-2 font-sci-fi">和 = <span id="subsetSum">0</span></span>
+                </div>
+                <div id="subsetArray" class="flex flex-wrap gap-2 min-h-[44px]"></div>
+                <div class="flex flex-wrap gap-2 items-center">
+                    <button type="button" id="subsetPrev" class="px-4 py-2 rounded bg-slate-600/40 border border-slate-500/40 text-slate-200 font-sci-fi text-sm" disabled>上一步</button>
+                    <button type="button" id="subsetNext" class="px-4 py-2 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 font-sci-fi text-sm" disabled>下一步</button>
+                    <button type="button" id="subsetAuto" class="px-4 py-2 rounded bg-violet-500/20 border border-violet-400/40 text-violet-200 font-sci-fi text-sm" disabled>自动播放</button>
+                    <label class="flex items-center gap-2 text-xs text-gray-400 font-sci-fi ml-2">
+                        <span>速度</span><input id="subsetSpeed" type="range" min="150" max="900" value="400" class="w-20">
+                    </label>
+                </div>
+                <div id="subsetLog" class="step-log font-sci-fi text-xs md:text-sm"></div>
+            </div>
+
+            <!-- N皇后 -->
+            <div id="panel-queens" class="tab-panel p-6 md:p-8 flex flex-col gap-6 hidden">
+                <h2 class="text-xl font-bold text-cyan-300 font-sci-fi">N皇后</h2>
+                <p class="text-sm text-gray-400 leading-relaxed">
+                    在 N×N 棋盘放 N 个皇后，使任意两个不在同一行、列、斜线。按<strong>行</strong>递归，每行选一列放置；若冲突则剪枝，回溯尝试下一列。
+                </p>
+                <div class="code-box">
+                    <pre class="text-cyan-200/90">placeQueen(row):
+    if row == n: 输出解，return
+    for col in 0..n-1:
+        if 安全(row, col): 放置皇后，placeQueen(row+1)，回溯</pre>
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <label class="text-xs text-gray-400 font-sci-fi">N (4–8)</label>
+                    <input id="queensN" type="number" min="4" max="8" value="4" class="w-14 rounded bg-black/40 border border-cyan-500/20 px-2 py-1.5 text-white text-sm">
+                    <button type="button" id="queensReset" class="px-4 py-2 rounded bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 font-sci-fi text-sm">初始化</button>
+                </div>
+                <div id="queensBoard" class="inline-grid gap-0.5 border-2 border-cyan-500/30 rounded-lg overflow-hidden p-1"></div>
+                <div class="flex flex-wrap gap-2 items-center">
+                    <button type="button" id="queensPrev" class="px-4 py-2 rounded bg-slate-600/40 border border-slate-500/40 text-slate-200 font-sci-fi text-sm" disabled>上一步</button>
+                    <button type="button" id="queensNext" class="px-4 py-2 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 font-sci-fi text-sm" disabled>下一步</button>
+                    <button type="button" id="queensAuto" class="px-4 py-2 rounded bg-violet-500/20 border border-violet-400/40 text-violet-200 font-sci-fi text-sm" disabled>自动播放</button>
+                    <label class="flex items-center gap-2 text-xs text-gray-400 font-sci-fi ml-2">
+                        <span>速度</span><input id="queensSpeed" type="range" min="200" max="1000" value="500" class="w-20">
+                    </label>
+                </div>
+                <div id="queensLog" class="step-log font-sci-fi text-xs md:text-sm"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        const tabs = document.querySelectorAll('.tab-btn');
+        const panels = {
+            perm: document.getElementById('panel-perm'),
+            subset: document.getElementById('panel-subset'),
+            queens: document.getElementById('panel-queens')
+        };
+        tabs.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = btn.dataset.tab;
+                tabs.forEach(b => b.classList.toggle('active', b === btn));
+                Object.keys(panels).forEach(k => {
+                    panels[k].classList.toggle('hidden', k !== id);
+                    panels[k].classList.toggle('flex', k === id);
+                });
+            });
+        });
+
+        /* ========== 全排列 ========== */
+        const perm = { arr: [], steps: [], idx: -1, autoTimer: null };
+        function buildPermSteps(arr) {
+            const steps = [];
+            function go(path, remaining) {
+                if (remaining.length === 0) {
+                    steps.push({ type: 'found', path: [...path] });
+                    return;
+                }
+                for (let i = 0; i < remaining.length; i++) {
+                    const x = remaining[i];
+                    const newPath = [...path, x];
+                    const newRem = remaining.filter((_, j) => j !== i);
+                    steps.push({ type: 'choose', path: [...newPath], remaining: [...newRem], chosen: x });
+                    go(newPath, newRem);
+                    steps.push({ type: 'backtrack', path: [...path], remaining: [...remaining] });
+                }
+            }
+            go([], [...arr]);
+            return steps;
+        }
+        function renderPerm() {
+            const pathEl = document.getElementById('permPath');
+            const remEl = document.getElementById('permRemaining');
+            pathEl.innerHTML = '';
+            remEl.innerHTML = '';
+            if (perm.idx < 0) return;
+            const s = perm.steps[perm.idx];
+            if (!s) return;
+            const path = s.path || [];
+            const rem = s.remaining || [];
+            path.forEach(v => {
+                const c = document.createElement('div');
+                c.className = 'elem-cell chosen';
+                c.textContent = v;
+                pathEl.appendChild(c);
+            });
+            perm.arr.forEach(v => {
+                const c = document.createElement('div');
+                c.className = 'elem-cell ' + (rem.includes(v) ? 'available' : 'used');
+                c.textContent = v;
+                remEl.appendChild(c);
+            });
+        }
+        function setPermLog() {
+            const log = document.getElementById('permLog');
+            if (perm.idx < 0 || !perm.steps.length) {
+                log.textContent = '点击「生成 1..n」开始。';
+                return;
+            }
+            const s = perm.steps[perm.idx];
+            if (s.type === 'choose') {
+                log.textContent = `步骤 ${perm.idx + 1}/${perm.steps.length}：选择 ${s.chosen} 加入路径，递归进入下一层。`;
+            } else if (s.type === 'found') {
+                log.textContent = `步骤 ${perm.idx + 1}/${perm.steps.length}：完成一个排列 [${s.path.join(', ')}]，回溯。`;
+            } else {
+                log.textContent = `步骤 ${perm.idx + 1}/${perm.steps.length}：回溯，撤销上一选择，尝试其他分支。`;
+            }
+        }
+        function permUi() {
+            const has = perm.steps.length > 0;
+            document.getElementById('permPrev').disabled = !has || perm.idx <= 0;
+            document.getElementById('permNext').disabled = !has || perm.idx >= perm.steps.length - 1;
+            document.getElementById('permAuto').disabled = !has;
+        }
+        document.getElementById('permReset').addEventListener('click', () => {
+            if (perm.autoTimer) clearInterval(perm.autoTimer);
+            perm.autoTimer = null;
+            let n = Math.min(5, Math.max(3, parseInt(document.getElementById('permN').value, 10) || 4));
+            document.getElementById('permN').value = n;
+            perm.arr = Array.from({ length: n }, (_, i) => i + 1);
+            perm.steps = buildPermSteps(perm.arr);
+            perm.idx = perm.steps.length ? 0 : -1;
+            renderPerm(); setPermLog(); permUi();
+        });
+        document.getElementById('permPrev').addEventListener('click', () => {
+            if (perm.idx > 0) { perm.idx--; renderPerm(); setPermLog(); permUi(); }
+        });
+        document.getElementById('permNext').addEventListener('click', () => {
+            if (perm.idx < perm.steps.length - 1) { perm.idx++; renderPerm(); setPermLog(); permUi(); }
+        });
+        document.getElementById('permAuto').addEventListener('click', function () {
+            if (perm.autoTimer) {
+                clearInterval(perm.autoTimer);
+                perm.autoTimer = null;
+                this.textContent = '自动播放';
+                return;
+            }
+            if (perm.idx >= perm.steps.length - 1) perm.idx = -1;
+            const spd = parseInt(document.getElementById('permSpeed').value, 10);
+            this.textContent = '停止';
+            perm.autoTimer = setInterval(() => {
+                if (perm.idx < perm.steps.length - 1) { perm.idx++; renderPerm(); setPermLog(); permUi(); }
+                else { clearInterval(perm.autoTimer); perm.autoTimer = null; this.textContent = '自动播放'; }
+            }, 950 - spd);
+        });
+
+        /* ========== 子集和 ========== */
+        const subset = { arr: [], target: 0, steps: [], idx: -1, autoTimer: null };
+        function buildSubsetSteps(arr, target) {
+            const steps = [];
+            const n = arr.length;
+            function go(idx, curSum, chosen) {
+                if (curSum === target && chosen.length > 0) {
+                    steps.push({ type: 'found', chosen: [...chosen], sum: curSum, idx });
+                    return;
+                }
+                if (idx >= n || curSum > target) return;
+                steps.push({ type: 'try_include', idx, val: arr[idx], chosen: [...chosen, arr[idx]], sum: curSum + arr[idx] });
+                go(idx + 1, curSum + arr[idx], [...chosen, arr[idx]]);
+                steps.push({ type: 'backtrack_include', idx, chosen: [...chosen], sum: curSum });
+                steps.push({ type: 'try_exclude', idx, val: arr[idx], chosen: [...chosen], sum: curSum });
+                go(idx + 1, curSum, chosen);
+                steps.push({ type: 'backtrack_exclude', idx, chosen: [...chosen], sum: curSum });
+            }
+            steps.push({ type: 'start', chosen: [], sum: 0, idx: 0 });
+            go(0, 0, []);
+            return steps;
+        }
+        function getSubsetState(step) {
+            if (!step) return { chosen: [], sum: 0, idx: -1 };
+            if (step.type === 'start') return { chosen: step.chosen, sum: step.sum, idx: step.idx };
+            if (step.type === 'found') return { chosen: step.chosen, sum: step.sum, idx: subset.arr.length };
+            if (['try_include', 'backtrack_include', 'try_exclude', 'backtrack_exclude'].includes(step.type))
+                return { chosen: step.chosen, sum: step.sum, idx: step.idx };
+            return { chosen: [], sum: 0, idx: -1 };
+        }
+        function renderSubset() {
+            const chosenEl = document.getElementById('subsetChosen');
+            const arrEl = document.getElementById('subsetArray');
+            const sumEl = document.getElementById('subsetSum');
+            chosenEl.innerHTML = '';
+            arrEl.innerHTML = '';
+            if (subset.idx < 0) { sumEl.textContent = '0'; return; }
+            const st = getSubsetState(subset.steps[subset.idx]);
+            sumEl.textContent = st.sum;
+            st.chosen.forEach(v => {
+                const c = document.createElement('div');
+                c.className = 'elem-cell included';
+                c.textContent = v;
+                chosenEl.appendChild(c);
+            });
+            subset.arr.forEach((v, i) => {
+                const c = document.createElement('div');
+                let cls = 'elem-cell ';
+                if (i < st.idx) cls += st.chosen.includes(v) ? 'included' : 'excluded';
+                else if (i === st.idx) cls += 'current ' + (st.chosen.includes(v) ? 'included' : 'available');
+                else cls += 'available';
+                c.className = cls;
+                c.textContent = v;
+                arrEl.appendChild(c);
+            });
+        }
+        function setSubsetLog() {
+            const log = document.getElementById('subsetLog');
+            if (subset.idx < 0 || !subset.steps.length) {
+                log.textContent = '输入数组与目标，点击「开始搜索」。';
+                return;
+            }
+            const s = subset.steps[subset.idx];
+            if (s.type === 'start') log.textContent = `步骤 1/${subset.steps.length}：开始，从下标 0 考虑。`;
+            else if (s.type === 'try_include')
+                log.textContent = `步骤 ${subset.idx + 1}/${subset.steps.length}：选择 arr[${s.idx}]=${s.val}，当前和 = ${s.sum}，递归。`;
+            else if (s.type === 'found')
+                log.textContent = `步骤 ${subset.idx + 1}/${subset.steps.length}：找到解！子集 [${s.chosen.join(', ')}] 和 = ${s.sum}。`;
+            else if (s.type === 'backtrack_include')
+                log.textContent = `步骤 ${subset.idx + 1}/${subset.steps.length}：回溯，撤销选择 arr[${s.idx}]。`;
+            else if (s.type === 'try_exclude')
+                log.textContent = `步骤 ${subset.idx + 1}/${subset.steps.length}：不选 arr[${s.idx}]=${s.val}，当前和 = ${s.sum}，递归。`;
+            else
+                log.textContent = `步骤 ${subset.idx + 1}/${subset.steps.length}：回溯，继续尝试。`;
+        }
+        function subsetUi() {
+            const has = subset.steps.length > 0;
+            document.getElementById('subsetPrev').disabled = !has || subset.idx <= 0;
+            document.getElementById('subsetNext').disabled = !has || subset.idx >= subset.steps.length - 1;
+            document.getElementById('subsetAuto').disabled = !has;
+        }
+        document.getElementById('subsetReset').addEventListener('click', () => {
+            if (subset.autoTimer) clearInterval(subset.autoTimer);
+            subset.autoTimer = null;
+            const raw = document.getElementById('subsetArr').value.replace(/\s/g, '');
+            subset.arr = raw ? raw.split(',').map(x => parseInt(x.trim(), 10)).filter(n => !isNaN(n)) : [2, 3, 5, 7, 9];
+            subset.target = parseInt(document.getElementById('subsetTarget').value, 10) || 12;
+            document.getElementById('subsetArr').value = subset.arr.join(', ');
+            document.getElementById('subsetTarget').value = subset.target;
+            subset.steps = buildSubsetSteps(subset.arr, subset.target);
+            subset.idx = subset.steps.length ? 0 : -1;
+            renderSubset(); setSubsetLog(); subsetUi();
+        });
+        document.getElementById('subsetPrev').addEventListener('click', () => {
+            if (subset.idx > 0) { subset.idx--; renderSubset(); setSubsetLog(); subsetUi(); }
+        });
+        document.getElementById('subsetNext').addEventListener('click', () => {
+            if (subset.idx < subset.steps.length - 1) { subset.idx++; renderSubset(); setSubsetLog(); subsetUi(); }
+        });
+        document.getElementById('subsetAuto').addEventListener('click', function () {
+            if (subset.autoTimer) {
+                clearInterval(subset.autoTimer);
+                subset.autoTimer = null;
+                this.textContent = '自动播放';
+                return;
+            }
+            if (subset.idx >= subset.steps.length - 1) subset.idx = -1;
+            const spd = parseInt(document.getElementById('subsetSpeed').value, 10);
+            this.textContent = '停止';
+            subset.autoTimer = setInterval(() => {
+                if (subset.idx < subset.steps.length - 1) { subset.idx++; renderSubset(); setSubsetLog(); subsetUi(); }
+                else { clearInterval(subset.autoTimer); subset.autoTimer = null; this.textContent = '自动播放'; }
+            }, 900 - spd);
+        });
+
+        /* ========== N皇后 ========== */
+        const queens = { n: 4, steps: [], idx: -1, autoTimer: null };
+        function canPlace(board, row, col) {
+            for (let r = 0; r < row; r++) {
+                if (board[r] === col) return false;
+                if (Math.abs(board[r] - col) === row - r) return false;
+            }
+            return true;
+        }
+        function buildQueensSteps(n) {
+            const steps = [];
+            const board = [];
+            function go(row) {
+                if (row === n) {
+                    steps.push({ type: 'found', board: [...board] });
+                    return;
+                }
+                for (let c = 0; c < n; c++) {
+                    steps.push({ type: 'try', row, col: c, board: [...board], safe: canPlace(board, row, c) });
+                    if (!canPlace(board, row, c)) continue;
+                    board.push(c);
+                    steps.push({ type: 'place', row, col: c, board: [...board] });
+                    go(row + 1);
+                    board.pop();
+                    steps.push({ type: 'backtrack', row, col: c, board: [...board] });
+                }
+            }
+            steps.push({ type: 'start', board: [] });
+            go(0);
+            return steps;
+        }
+        function renderQueens() {
+            const el = document.getElementById('queensBoard');
+            const n = queens.n;
+            el.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
+            el.className = 'inline-grid gap-0.5 border-2 border-cyan-500/30 rounded-lg overflow-hidden p-1';
+            el.innerHTML = '';
+            let board = [], tryCell = null;
+            if (queens.idx >= 0 && queens.steps[queens.idx]) {
+                const s = queens.steps[queens.idx];
+                board = s.board || [];
+                if (s.type === 'try' && s.safe === false) tryCell = [s.row, s.col];
+                else if (s.type === 'place' || s.type === 'found') board = s.board;
+            }
+            for (let r = 0; r < n; r++) {
+                for (let c = 0; c < n; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'board-cell ' + ((r + c) % 2 === 0 ? 'light' : 'dark');
+                    const qCol = board[r];
+                    const isQueen = qCol === c;
+                    const isConflict = tryCell && tryCell[0] === r && tryCell[1] === c;
+                    const isTry = queens.idx >= 0 && queens.steps[queens.idx]?.type === 'try' && queens.steps[queens.idx].row === r && queens.steps[queens.idx].col === c;
+                    if (isQueen) cell.classList.add('queen');
+                    if (isConflict) cell.classList.add('conflict');
+                    if (isTry && !isConflict) cell.classList.add('trying');
+                    if (isQueen) {
+                        const sym = document.createElement('span');
+                        sym.className = 'queen-symbol';
+                        sym.textContent = '♛';
+                        cell.appendChild(sym);
+                    }
+                    cell.style.width = cell.style.height = (n <= 6 ? 52 : 42) + 'px';
+                    el.appendChild(cell);
+                }
+            }
+        }
+        function setQueensLog() {
+            const log = document.getElementById('queensLog');
+            if (queens.idx < 0 || !queens.steps.length) {
+                log.textContent = '选择 N，点击「初始化」。';
+                return;
+            }
+            const s = queens.steps[queens.idx];
+            if (s.type === 'start') log.textContent = `步骤 1/${queens.steps.length}：开始，从第 0 行放置。`;
+            else if (s.type === 'try')
+                log.textContent = s.safe
+                    ? `步骤 ${queens.idx + 1}/${queens.steps.length}：尝试 (${s.row}, ${s.col})，安全，放置。`
+                    : `步骤 ${queens.idx + 1}/${queens.steps.length}：尝试 (${s.row}, ${s.col})，冲突，跳过。`;
+            else if (s.type === 'place')
+                log.textContent = `步骤 ${queens.idx + 1}/${queens.steps.length}：在第 ${s.row} 行第 ${s.col} 列放置皇后，递归下一行。`;
+            else if (s.type === 'found')
+                log.textContent = `步骤 ${queens.idx + 1}/${queens.steps.length}：找到解！列号序列 [${s.board.join(', ')}]。`;
+            else
+                log.textContent = `步骤 ${queens.idx + 1}/${queens.steps.length}：回溯，撤销 (${s.row}, ${s.col})，尝试下一列。`;
+        }
+        function queensUi() {
+            const has = queens.steps.length > 0;
+            document.getElementById('queensPrev').disabled = !has || queens.idx <= 0;
+            document.getElementById('queensNext').disabled = !has || queens.idx >= queens.steps.length - 1;
+            document.getElementById('queensAuto').disabled = !has;
+        }
+        document.getElementById('queensReset').addEventListener('click', () => {
+            if (queens.autoTimer) clearInterval(queens.autoTimer);
+            queens.autoTimer = null;
+            let n = Math.min(8, Math.max(4, parseInt(document.getElementById('queensN').value, 10) || 4));
+            document.getElementById('queensN').value = n;
+            queens.n = n;
+            queens.steps = buildQueensSteps(n);
+            queens.idx = queens.steps.length ? 0 : -1;
+            renderQueens(); setQueensLog(); queensUi();
+        });
+        document.getElementById('queensPrev').addEventListener('click', () => {
+            if (queens.idx > 0) { queens.idx--; renderQueens(); setQueensLog(); queensUi(); }
+        });
+        document.getElementById('queensNext').addEventListener('click', () => {
+            if (queens.idx < queens.steps.length - 1) { queens.idx++; renderQueens(); setQueensLog(); queensUi(); }
+        });
+        document.getElementById('queensAuto').addEventListener('click', function () {
+            if (queens.autoTimer) {
+                clearInterval(queens.autoTimer);
+                queens.autoTimer = null;
+                this.textContent = '自动播放';
+                return;
+            }
+            if (queens.idx >= queens.steps.length - 1) queens.idx = -1;
+            const spd = parseInt(document.getElementById('queensSpeed').value, 10);
+            this.textContent = '停止';
+            queens.autoTimer = setInterval(() => {
+                if (queens.idx < queens.steps.length - 1) { queens.idx++; renderQueens(); setQueensLog(); queensUi(); }
+                else { clearInterval(queens.autoTimer); queens.autoTimer = null; this.textContent = '自动播放'; }
+            }, 1000 - spd);
+        });
+
+        document.getElementById('permReset').click();
+        document.getElementById('subsetReset').click();
+        document.getElementById('queensReset').click();
+    })();
+    </script>
+</body>
+</html>

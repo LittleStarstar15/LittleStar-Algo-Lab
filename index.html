@@ -134,7 +134,7 @@
         <div class="flex items-center gap-6 mb-6 md:mb-0">
             <!-- 头像框：assets/images/LittleStar.png -->
             <div class="w-16 h-16 rounded-full border-2 border-cyan-400 avatar-glow flex items-center justify-center bg-black/50 overflow-hidden">
-                <img src="assets/images/LittleStar.png" alt="算法科学家小星星" class="w-full h-full object-cover">
+                <img src="assets/images/LittleStar.jpg" alt="算法科学家小星星" class="w-full h-full object-cover">
             </div>
             <div>
                 <h1 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-white drop-shadow-[0_0_5px_rgba(0,240,255,0.5)]">
@@ -304,8 +304,74 @@
                 </p>
             </a>
 
-            <a href="modules/02_algorithms/pathfinder_ultimate.html" class="module-card group">
+            <a href="modules/02_algorithms/search_algorithms.html" class="module-card group">
                 <div class="module-badge">ALG 03</div>
+                <div class="w-12 h-12 rounded bg-emerald-900/40 border border-emerald-500/30 flex items-center justify-center mb-4 group-hover:bg-emerald-500/20 transition-colors">
+                    <span class="text-2xl">🔍</span>
+                </div>
+                <h3 class="text-lg font-bold text-gray-100 mb-2 font-sci-fi group-hover:text-cyan-300 transition-colors">搜索算法：二分查找</h3>
+                <p class="text-gray-400 text-sm flex-1 leading-relaxed">
+                    线性搜索 vs 二分查找：亲手对比 O(n) 与 O(log n) 的步数差距，单步执行看清 left / mid / right 如何缩小搜索范围。
+                </p>
+            </a>
+
+            <a href="modules/02_algorithms/sorting_algorithms.html" class="module-card group">
+                <div class="module-badge">ALG 04</div>
+                <div class="w-12 h-12 rounded bg-purple-900/40 border border-purple-500/30 flex items-center justify-center mb-4 group-hover:bg-purple-500/20 transition-colors">
+                    <span class="text-2xl">📊</span>
+                </div>
+                <h3 class="text-lg font-bold text-gray-100 mb-2 font-sci-fi group-hover:text-cyan-300 transition-colors">排序算法</h3>
+                <p class="text-gray-400 text-sm flex-1 leading-relaxed">
+                    选择、冒泡、插入、快速、归并：五大经典排序的原理与伪代码，附带复杂度对比表。
+                </p>
+            </a>
+
+            <a href="modules/02_algorithms/divide_conquer.html" class="module-card group">
+                <div class="module-badge">ALG 05</div>
+                <div class="w-12 h-12 rounded bg-teal-900/40 border border-teal-500/30 flex items-center justify-center mb-4 group-hover:bg-teal-500/20 transition-colors">
+                    <span class="text-2xl">🔀</span>
+                </div>
+                <h3 class="text-lg font-bold text-gray-100 mb-2 font-sci-fi group-hover:text-cyan-300 transition-colors">分治算法</h3>
+                <p class="text-gray-400 text-sm flex-1 leading-relaxed">
+                    分治三步与可视化：二分查找式分治搜索、有序数组构建平衡 BST、汉诺塔递归与单步/自动演示。
+                </p>
+            </a>
+
+            <a href="modules/02_algorithms/backtracking.html" class="module-card group">
+                <div class="module-badge">ALG 06</div>
+                <div class="w-12 h-12 rounded bg-rose-900/40 border border-rose-500/30 flex items-center justify-center mb-4 group-hover:bg-rose-500/20 transition-colors">
+                    <span class="text-2xl">🔄</span>
+                </div>
+                <h3 class="text-lg font-bold text-gray-100 mb-2 font-sci-fi group-hover:text-cyan-300 transition-colors">回溯算法</h3>
+                <p class="text-gray-400 text-sm flex-1 leading-relaxed">
+                    选择、约束、回溯：全排列、子集和、N 皇后三大经典问题的步骤可视化与单步/自动演示。
+                </p>
+            </a>
+
+            <a href="modules/02_algorithms/dynamic_programming.html" class="module-card group">
+                <div class="module-badge">ALG 07</div>
+                <div class="w-12 h-12 rounded bg-emerald-900/40 border border-emerald-500/30 flex items-center justify-center mb-4 group-hover:bg-emerald-500/20 transition-colors">
+                    <span class="text-2xl">📈</span>
+                </div>
+                <h3 class="text-lg font-bold text-gray-100 mb-2 font-sci-fi group-hover:text-cyan-300 transition-colors">动态规划</h3>
+                <p class="text-gray-400 text-sm flex-1 leading-relaxed">
+                    DP 特性与解题思路，0-1 背包、完全背包、编辑距离的 DP 表可视化与单步演示。
+                </p>
+            </a>
+
+            <a href="modules/02_algorithms/greedy_algorithms.html" class="module-card group">
+                <div class="module-badge">ALG 08</div>
+                <div class="w-12 h-12 rounded bg-amber-900/40 border border-amber-500/30 flex items-center justify-center mb-4 group-hover:bg-amber-500/20 transition-colors">
+                    <span class="text-2xl">🎯</span>
+                </div>
+                <h3 class="text-lg font-bold text-gray-100 mb-2 font-sci-fi group-hover:text-cyan-300 transition-colors">贪心算法</h3>
+                <p class="text-gray-400 text-sm flex-1 leading-relaxed">
+                    分数背包、最大容量、最大切分乘积的贪心思路与步骤可视化，支持参数调整与单步/自动演示。
+                </p>
+            </a>
+
+            <a href="modules/02_algorithms/pathfinder_ultimate.html" class="module-card group">
+                <div class="module-badge">ALG 09</div>
                 <div class="w-12 h-12 rounded bg-orange-900/40 border border-orange-500/30 flex items-center justify-center mb-4 group-hover:bg-orange-500/20 transition-colors">
                     <span class="text-2xl">🛸</span>
                 </div>

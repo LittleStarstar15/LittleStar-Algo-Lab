@@ -1,6 +1,6 @@
 # 🌌 星华大学算法交互实验室 (Xinghua Algorithm Terminal)
 
-<img src="assets/images/LittleStar.png" align="right" width="160" style="border-radius: 50%; border: 4px solid #00F0FF; box-shadow: 0 0 20px #00F0FF;">
+<img src="assets/images/LittleStar.jpg" align="right" width="160" style="border-radius: 50%; border: 4px solid #00F0FF; box-shadow: 0 0 20px #00F0FF;">
 
 > "算法不是枯燥的公式，它是将宇宙混沌转化为绝对秩序的魔法。"
 

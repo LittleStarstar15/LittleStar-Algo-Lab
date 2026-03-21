@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星华大学：排序算法</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Noto+Sans+SC:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #050814;
+            font-family: 'Noto Sans SC', sans-serif;
+            color: #e2e8f0;
+            overflow-x: hidden;
+            background-image:
+                radial-gradient(circle at 20% 40%, rgba(0, 240, 255, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 80% 60%, rgba(255, 215, 0, 0.03) 0%, transparent 40%);
+        }
+        .font-sci-fi { font-family: 'Orbitron', sans-serif; }
+        .glass-panel {
+            background: rgba(11, 15, 25, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.05);
+        }
+        .tab-bar {
+            display: flex;
+            overflow-x: auto;
+            gap: 0;
+            border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+            padding: 0 4px;
+        }
+        .tab-bar::-webkit-scrollbar { height: 6px; }
+        .tab-bar::-webkit-scrollbar-thumb { background: rgba(0, 240, 255, 0.3); border-radius: 3px; }
+        .tab-btn {
+            flex-shrink: 0;
+            padding: 12px 16px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            font-size: 0.75rem;
+            color: #9ca3af;
+            transition: all 0.3s;
+            border-bottom: 2px solid transparent;
+            white-space: nowrap;
+        }
+        .tab-btn:hover { color: #67e8f9; }
+        .tab-btn.active {
+            color: #00F0FF;
+            border-bottom-color: #00F0FF;
+            text-shadow: 0 0 8px rgba(0, 240, 255, 0.6);
+        }
+        .code-box {
+            background: rgba(0,0,0,0.5);
+            border: 1px dashed rgba(0,240,255,0.25);
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-family: 'Orbitron', monospace;
+            font-size: 11px;
+            line-height: 1.6;
+            overflow-x: auto;
+        }
+        .complexity-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+        .complexity-badge.best { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .complexity-badge.avg { background: rgba(234, 179, 8, 0.2); color: #eab308; }
+        .complexity-badge.worst { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        /* 排序动画 */
+        .sort-bar {
+            min-width: 28px;
+            width: 28px;
+            height: var(--h, 24px);
+            background: rgba(0, 240, 255, 0.25);
+            border: 1px solid rgba(0, 240, 255, 0.4);
+            border-radius: 4px 4px 0 0;
+            transition: height 0.2s, background 0.2s, border-color 0.2s, box-shadow 0.2s;
+        }
+        .sort-bar.normal { background: rgba(0, 240, 255, 0.2); }
+        .sort-bar.compare { background: rgba(234, 179, 8, 0.5); border-color: #eab308; box-shadow: 0 0 12px rgba(234,179,8,0.6); }
+        .sort-bar.swap { background: rgba(239, 68, 68, 0.5); border-color: #ef4444; animation: swapFlash 0.4s ease; }
+        .sort-bar.sorted { background: rgba(16, 185, 129, 0.4); border-color: #10b981; }
+        .sort-bar.pivot { background: rgba(168, 85, 247, 0.5); border-color: #a855f7; box-shadow: 0 0 12px rgba(168,85,247,0.6); }
+        @keyframes swapFlash { 0%,100%{ transform: scale(1); } 50%{ transform: scale(1.08); } }
+        button { transition: all 0.2s; }
+        button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 0 12px rgba(0,240,255,0.3); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-6 md:p-10 pt-20 md:pt-10">
+
+    <a href="../../index.html" class="fixed top-4 left-4 md:top-6 md:left-6 z-50 flex items-center gap-2 px-3 py-2 md:px-4 md:py-2 rounded border border-cyan-500/30 bg-black/60 backdrop-blur-md text-cyan-500/70 hover:text-cyan-300 hover:border-cyan-400 hover:shadow-[0_0_15px_rgba(0,240,255,0.4)] transition-all font-sci-fi text-xs md:text-sm group text-decoration-none">
+        <svg class="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        <span class="hidden md:inline tracking-wider">MAIN TERMINAL</span>
+    </a>
+
+    <div class="text-center mb-8 w-full max-w-5xl mt-6 md:mt-0">
+        <h1 class="text-3xl md:text-4xl font-sci-fi font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500 mb-2 drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
+            排序算法
+        </h1>
+        <p class="text-cyan-400/70 text-sm tracking-widest font-sci-fi">SELECTION | BUBBLE | INSERTION | QUICK | MERGE</p>
+    </div>
+
+    <div class="w-full max-w-5xl glass-panel rounded-2xl overflow-hidden">
+        <!-- Tab 栏 -->
+        <div class="tab-bar bg-black/20">
+            <button class="tab-btn active" data-tab="selection">选择排序</button>
+            <button class="tab-btn" data-tab="bubble">冒泡排序</button>
+            <button class="tab-btn" data-tab="insertion">插入排序</button>
+            <button class="tab-btn" data-tab="quick">快速排序</button>
+            <button class="tab-btn" data-tab="merge">归并排序</button>
+        </div>
+
+        <!-- 选择排序 -->
+        <div id="panel-selection" class="tab-panel p-6 md:p-8 flex flex-col gap-6">
+            <h2 class="text-xl font-bold text-cyan-300 font-sci-fi">选择排序 (Selection Sort)</h2>
+            <p class="text-gray-300 text-sm leading-relaxed">
+                每次从未排序区间选取最小元素，与未排序区间的第一个元素交换，直到全部有序。思路简单，但无论数据如何都要做 O(n²) 次比较。
+            </p>
+            <div class="flex flex-wrap gap-2">
+                <span class="complexity-badge best">最佳 O(n²)</span>
+                <span class="complexity-badge avg">平均 O(n²)</span>
+                <span class="complexity-badge worst">最坏 O(n²)</span>
+            </div>
+            <div class="code-box">
+                <pre class="text-cyan-200/90">for i from 0 to n-2:
+    minIdx = i
+    for j from i+1 to n-1:
+        if arr[j] < arr[minIdx]:
+            minIdx = j
+    swap arr[i] and arr[minIdx]</pre>
+            </div>
+        </div>
+
+        <!-- 冒泡排序 -->
+        <div id="panel-bubble" class="tab-panel hidden p-6 md:p-8 flex flex-col gap-6">
+            <h2 class="text-xl font-bold text-cyan-300 font-sci-fi">冒泡排序 (Bubble Sort)</h2>
+            <p class="text-gray-300 text-sm leading-relaxed">
+                相邻元素两两比较，若前者大于后者则交换。每轮“冒泡”会把当前未排序区间的最大值“冒”到末尾。可加标志位优化：若某轮无交换则提前结束。
+            </p>
+            <div class="flex flex-wrap gap-2">
+                <span class="complexity-badge best">最佳 O(n)</span>
+                <span class="complexity-badge avg">平均 O(n²)</span>
+                <span class="complexity-badge worst">最坏 O(n²)</span>
+            </div>
+            <div class="code-box">
+                <pre class="text-cyan-200/90">for i from 0 to n-1:
+    swapped = false
+    for j from 0 to n-2-i:
+        if arr[j] > arr[j+1]:
+            swap arr[j] and arr[j+1]
+            swapped = true
+    if not swapped: break</pre>
+            </div>
+        </div>
+
+        <!-- 插入排序 -->
+        <div id="panel-insertion" class="tab-panel hidden p-6 md:p-8 flex flex-col gap-6">
+            <h2 class="text-xl font-bold text-cyan-300 font-sci-fi">插入排序 (Insertion Sort)</h2>
+            <p class="text-gray-300 text-sm leading-relaxed">
+                将数组视为“已排序 + 未排序”两部分，每次取未排序区第一个元素，在已排序区中从后往前找插入位置并插入。对近乎有序的数据非常高效。
+            </p>
+            <div class="flex flex-wrap gap-2">
+                <span class="complexity-badge best">最佳 O(n)</span>
+                <span class="complexity-badge avg">平均 O(n²)</span>
+                <span class="complexity-badge worst">最坏 O(n²)</span>
+            </div>
+            <div class="code-box">
+                <pre class="text-cyan-200/90">for i from 1 to n-1:
+    key = arr[i]
+    j = i - 1
+    while j >= 0 and arr[j] > key:
+        arr[j+1] = arr[j]
+        j--
+    arr[j+1] = key</pre>
+            </div>
+        </div>
+
+        <!-- 快速排序 -->
+        <div id="panel-quick" class="tab-panel hidden p-6 md:p-8 flex flex-col gap-6">
+            <h2 class="text-xl font-bold text-cyan-300 font-sci-fi">快速排序 (Quick Sort)</h2>
+            <p class="text-gray-300 text-sm leading-relaxed">
+                分治思想：选一个基准（通常取首/尾/中），将数组划分为“小于基准”和“大于基准”两部分，再对两部分递归排序。平均性能优秀，但最坏情况（如已有序且选错基准）会退化为 O(n²)。
+            </p>
+            <div class="flex flex-wrap gap-2">
+                <span class="complexity-badge best">最佳 O(n log n)</span>
+                <span class="complexity-badge avg">平均 O(n log n)</span>
+                <span class="complexity-badge worst">最坏 O(n²)</span>
+            </div>
+            <div class="code-box">
+                <pre class="text-cyan-200/90">function quickSort(arr, low, high):
+    if low < high:
+        pivot = partition(arr, low, high)
+        quickSort(arr, low, pivot - 1)
+        quickSort(arr, pivot + 1, high)
+
+function partition(arr, low, high):
+    pivot = arr[high]
+    i = low - 1
+    for j from low to high-1:
+        if arr[j] <= pivot:
+            i++; swap arr[i] and arr[j]
+    swap arr[i+1] and arr[high]
+    return i + 1</pre>
+            </div>
+        </div>
+
+        <!-- 归并排序 -->
+        <div id="panel-merge" class="tab-panel hidden p-6 md:p-8 flex flex-col gap-6">
+            <h2 class="text-xl font-bold text-cyan-300 font-sci-fi">归并排序 (Merge Sort)</h2>
+            <p class="text-gray-300 text-sm leading-relaxed">
+                分治思想：将数组不断二分，直到子数组长度为 1，再两两合并成有序数组。稳定排序，时间复杂度恒为 O(n log n)，但需要 O(n) 额外空间。
+            </p>
+            <div class="flex flex-wrap gap-2">
+                <span class="complexity-badge best">最佳 O(n log n)</span>
+                <span class="complexity-badge avg">平均 O(n log n)</span>
+                <span class="complexity-badge worst">最坏 O(n log n)</span>
+            </div>
+            <div class="code-box">
+                <pre class="text-cyan-200/90">function mergeSort(arr, left, right):
+    if left < right:
+        mid = (left + right) / 2
+        mergeSort(arr, left, mid)
+        mergeSort(arr, mid+1, right)
+        merge(arr, left, mid, right)
+
+function merge(arr, left, mid, right):
+    // 将 arr[left..mid] 与 arr[mid+1..right] 合并为有序
+    L = arr[left..mid], R = arr[mid+1..right]
+    i=j=0, k=left
+    while i < len(L) and j < len(R):
+        if L[i] <= R[j]: arr[k++] = L[i++]
+        else: arr[k++] = R[j++]
+    copy remaining elements</pre>
+            </div>
+        </div>
+
+        <!-- 共享动画演示区 -->
+        <div class="border-t border-cyan-500/20 p-6 mt-0">
+            <h3 class="font-sci-fi font-bold text-cyan-200 mb-4">动画演示 · 按当前标签运行对应算法</h3>
+            <div class="flex flex-wrap items-end gap-3 mb-4">
+                <div><label class="block text-xs text-gray-400 mb-1">数组长度</label><input id="sizeInput" type="number" min="4" max="20" value="10" class="w-20 rounded bg-black/40 border border-cyan-500/20 px-2 py-1 text-sm text-white"></div>
+                <button id="btnGen" class="px-4 py-2 rounded bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 font-sci-fi text-sm">生成数组</button>
+                <button id="btnStep" class="px-4 py-2 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 font-sci-fi text-sm" disabled>单步</button>
+                <button id="btnAuto" class="px-4 py-2 rounded bg-yellow-500/20 border border-yellow-400/40 text-yellow-200 font-sci-fi text-sm" disabled>自动</button>
+                <div class="flex items-center gap-2 ml-2"><label class="text-xs text-gray-400">速度</label><input id="speedRange" type="range" min="80" max="600" value="200" class="w-24"></div>
+            </div>
+            <div id="sortViz" class="flex items-end justify-center gap-1 min-h-[160px] px-4 py-4 bg-black/30 rounded-xl"></div>
+            <div id="stepInfo" class="mt-3 text-xs text-gray-400 font-sci-fi"></div>
+            <div class="mt-3 flex flex-wrap gap-4 text-xs text-gray-500">
+                <span><span class="inline-block w-3 h-3 rounded bg-amber-500/60 mr-1"></span>比较</span>
+                <span><span class="inline-block w-3 h-3 rounded bg-red-500/60 mr-1"></span>交换</span>
+                <span><span class="inline-block w-3 h-3 rounded bg-emerald-500/60 mr-1"></span>已排序</span>
+                <span><span class="inline-block w-3 h-3 rounded bg-purple-500/60 mr-1"></span>基准(pivot)</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 对比表 -->
+    <div class="w-full max-w-5xl mt-6 glass-panel rounded-2xl p-6">
+        <h2 class="text-lg font-bold text-cyan-300 font-sci-fi mb-4">复杂度对比</h2>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+                <thead>
+                    <tr class="text-gray-400 border-b border-cyan-500/20">
+                        <th class="py-2 pr-4 font-sci-fi">算法</th>
+                        <th class="py-2 pr-4 font-sci-fi">最佳</th>
+                        <th class="py-2 pr-4 font-sci-fi">平均</th>
+                        <th class="py-2 pr-4 font-sci-fi">最坏</th>
+                        <th class="py-2 font-sci-fi">空间</th>
+                    </tr>
+                </thead>
+                <tbody class="text-gray-300">
+                    <tr class="border-b border-cyan-500/10"><td class="py-2 pr-4">选择排序</td><td>O(n²)</td><td>O(n²)</td><td>O(n²)</td><td>O(1)</td></tr>
+                    <tr class="border-b border-cyan-500/10"><td class="py-2 pr-4">冒泡排序</td><td>O(n)</td><td>O(n²)</td><td>O(n²)</td><td>O(1)</td></tr>
+                    <tr class="border-b border-cyan-500/10"><td class="py-2 pr-4">插入排序</td><td>O(n)</td><td>O(n²)</td><td>O(n²)</td><td>O(1)</td></tr>
+                    <tr class="border-b border-cyan-500/10"><td class="py-2 pr-4">快速排序</td><td>O(n log n)</td><td>O(n log n)</td><td>O(n²)</td><td>O(log n)</td></tr>
+                    <tr><td class="py-2 pr-4">归并排序</td><td>O(n log n)</td><td>O(n log n)</td><td>O(n log n)</td><td>O(n)</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let arr = [];
+        let frames = [];
+        let frameIdx = 0;
+        let running = false;
+        let maxVal = 100;
+
+        function getActiveAlgo() {
+            const active = document.querySelector('.tab-btn.active');
+            return active ? active.dataset.tab : 'selection';
+        }
+
+        function randArray(n) {
+            const a = [];
+            for (let i = 0; i < n; i++) a.push(Math.floor(Math.random() * 90) + 10);
+            return a;
+        }
+
+        function record(arrCopy, opts = {}) {
+            frames.push({ arr: [...arrCopy], ...opts });
+        }
+
+        function selectionSort(a) {
+            frames = [];
+            const arr = [...a];
+            record(arr, { msg: '初始' });
+            for (let i = 0; i < arr.length - 1; i++) {
+                let minIdx = i;
+                for (let j = i + 1; j < arr.length; j++) {
+                    record(arr, { compare: [minIdx, j], sorted: [0, i], msg: `比较 arr[${j}] 与 当前最小` });
+                    if (arr[j] < arr[minIdx]) minIdx = j;
+                }
+                [arr[i], arr[minIdx]] = [arr[minIdx], arr[i]];
+                record(arr, { swap: [i, minIdx], sorted: [0, i + 1], msg: `交换 ${arr[minIdx]} 到位置 ${i}` });
+            }
+            record(arr, { sorted: [0, arr.length], msg: '完成' });
+        }
+
+        function bubbleSort(a) {
+            frames = [];
+            const arr = [...a];
+            record(arr, { msg: '初始' });
+            for (let i = 0; i < arr.length; i++) {
+                let swapped = false;
+                for (let j = 0; j < arr.length - 1 - i; j++) {
+                    record(arr, { compare: [j, j + 1], sorted: [arr.length - i, arr.length], msg: `比较 arr[${j}] 与 arr[${j+1}]` });
+                    if (arr[j] > arr[j + 1]) {
+                        [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];
+                        swapped = true;
+                        record(arr, { swap: [j, j + 1], sorted: [arr.length - i, arr.length], msg: `交换` });
+                    }
+                }
+                if (!swapped) break;
+            }
+            record(arr, { sorted: [0, arr.length], msg: '完成' });
+        }
+
+        function insertionSort(a) {
+            frames = [];
+            const arr = [...a];
+            record(arr, { msg: '初始' });
+            for (let i = 1; i < arr.length; i++) {
+                const key = arr[i];
+                let j = i - 1;
+                record(arr, { compare: [i, j], sorted: [0, i], msg: `key=arr[${i}]=${key}，寻找插入位置` });
+                while (j >= 0 && arr[j] > key) {
+                    arr[j + 1] = arr[j];
+                    record(arr, { swap: [j, j + 1], sorted: [0, i], msg: `后移 arr[${j}]` });
+                    j--;
+                }
+                arr[j + 1] = key;
+                record(arr, { sorted: [0, i + 1], msg: `插入 key 到位置 ${j + 1}` });
+            }
+            record(arr, { sorted: [0, arr.length], msg: '完成' });
+        }
+
+        function quickSortRec(arr, low, high) {
+            if (low >= high) return;
+            const pivot = arr[high];
+            record(arr, { pivot: high, msg: `基准 pivot=arr[${high}]=${pivot}` });
+            let i = low - 1;
+            for (let j = low; j < high; j++) {
+                record(arr, { pivot: high, compare: [j], msg: `比较 arr[${j}]=${arr[j]} 与 pivot` });
+                if (arr[j] <= pivot) {
+                    i++;
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                    record(arr, { pivot: high, swap: [i, j], msg: '交换' });
+                }
+            }
+            [arr[i + 1], arr[high]] = [arr[high], arr[i + 1]];
+            record(arr, { pivot: i + 1, swap: [i + 1, high], msg: 'pivot 归位' });
+            quickSortRec(arr, low, i);
+            quickSortRec(arr, i + 2, high);
+        }
+        function quickSort(a) {
+            frames = [];
+            const arr = [...a];
+            record(arr, { msg: '初始' });
+            quickSortRec(arr, 0, arr.length - 1);
+            record(arr, { sorted: [0, arr.length], msg: '完成' });
+        }
+
+        function merge(arr, left, mid, right, temp) {
+            record(arr, { range: [left, right], compare: [mid, mid + 1], msg: `合并 [${left}..${mid}] 与 [${mid+1}..${right}]` });
+            for (let t = left; t <= right; t++) temp[t] = arr[t];
+            let i = left, j = mid + 1, k = left;
+            while (i <= mid && j <= right) {
+                if (temp[i] <= temp[j]) arr[k++] = temp[i++];
+                else arr[k++] = temp[j++];
+            }
+            while (i <= mid) arr[k++] = temp[i++];
+            while (j <= right) arr[k++] = temp[j++];
+            record(arr, { sorted: [left, right + 1], range: [left, right], msg: '合并完成' });
+        }
+        function mergeSortRec(arr, left, right, temp) {
+            if (left >= right) return;
+            const mid = Math.floor((left + right) / 2);
+            mergeSortRec(arr, left, mid, temp);
+            mergeSortRec(arr, mid + 1, right, temp);
+            merge(arr, left, mid, right, temp);
+        }
+        function mergeSort(a) {
+            frames = [];
+            const arr = [...a];
+            const temp = new Array(arr.length);
+            record(arr, { msg: '初始' });
+            mergeSortRec(arr, 0, arr.length - 1, temp);
+            record(arr, { sorted: [0, arr.length], msg: '完成' });
+        }
+
+        function runAlgo() {
+            const algo = getActiveAlgo();
+            if (algo === 'selection') selectionSort(arr);
+            else if (algo === 'bubble') bubbleSort(arr);
+            else if (algo === 'insertion') insertionSort(arr);
+            else if (algo === 'quick') quickSort(arr);
+            else if (algo === 'merge') mergeSort(arr);
+        }
+
+        function render(frame) {
+            if (!frame) return;
+            const viz = document.getElementById('sortViz');
+            viz.innerHTML = '';
+            const a = frame.arr;
+            const max = Math.max(...a, 1);
+            a.forEach((v, i) => {
+                const wrap = document.createElement('div');
+                wrap.className = 'flex flex-col items-center';
+                const bar = document.createElement('div');
+                bar.className = 'sort-bar';
+                bar.style.setProperty('--h', (v / max * 100) + 'px');
+                bar.title = `arr[${i}]=${v}`;
+                const num = document.createElement('span');
+                num.className = 'text-[10px] text-gray-400 mt-1';
+                num.textContent = v;
+                if (frame.sorted) {
+                    const [s, e] = frame.sorted;
+                    if (i >= s && i < e) bar.classList.add('sorted');
+                }
+                if (frame.compare && frame.compare.includes(i)) bar.classList.add('compare');
+                if (frame.swap && frame.swap.includes(i)) bar.classList.add('swap');
+                if (frame.pivot !== undefined && frame.pivot === i) bar.classList.add('pivot');
+                if (!bar.classList.contains('compare') && !bar.classList.contains('swap') && !bar.classList.contains('pivot') && !bar.classList.contains('sorted')) bar.classList.add('normal');
+                wrap.appendChild(bar);
+                wrap.appendChild(num);
+                viz.appendChild(wrap);
+            });
+            document.getElementById('stepInfo').textContent = `${frame.msg || ''} · 第 ${frameIdx + 1} / ${frames.length} 步`;
+        }
+
+        function applyStep() {
+            if (frameIdx >= frames.length) {
+                document.getElementById('btnStep').disabled = true;
+                document.getElementById('btnAuto').disabled = true;
+                if (running) running = false;
+                return;
+            }
+            render(frames[frameIdx]);
+            frameIdx++;
+        }
+
+        function generate() {
+            const n = Math.max(4, Math.min(20, parseInt(document.getElementById('sizeInput').value) || 10));
+            document.getElementById('sizeInput').value = n;
+            arr = randArray(n);
+            frameIdx = 0;
+            runAlgo();
+            document.getElementById('btnStep').disabled = false;
+            document.getElementById('btnAuto').disabled = false;
+            frameIdx = 0;
+            render(frames[0] || { arr: [...arr], msg: '点击单步或自动播放' });
+        }
+
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tab = btn.dataset.tab;
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+                btn.classList.add('active');
+                document.getElementById('panel-' + tab).classList.remove('hidden');
+                if (arr.length > 0) { runAlgo(); frameIdx = 0; document.getElementById('btnStep').disabled = false; document.getElementById('btnAuto').disabled = false; render(frames[0]); }
+            });
+        });
+
+        document.getElementById('btnGen').addEventListener('click', generate);
+        document.getElementById('btnStep').addEventListener('click', () => {
+            if (frames.length === 0 && arr.length > 0) { runAlgo(); frameIdx = 0; }
+            applyStep();
+        });
+        document.getElementById('btnAuto').addEventListener('click', async () => {
+            if (frames.length === 0 && arr.length > 0) { runAlgo(); frameIdx = 0; }
+            const delay = () => parseInt(document.getElementById('speedRange').value);
+            running = true;
+            while (running && frameIdx < frames.length) {
+                applyStep();
+                await new Promise(r => setTimeout(r, delay()));
+            }
+        });
+
+        generate();
+    </script>
+</body>
+</html>

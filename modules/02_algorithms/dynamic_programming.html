@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星华大学：动态规划</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Noto+Sans+SC:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #050814;
+            font-family: 'Noto Sans SC', sans-serif;
+            color: #e2e8f0;
+            overflow-x: hidden;
+            background-image:
+                radial-gradient(circle at 20% 40%, rgba(0, 240, 255, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 80% 60%, rgba(34, 197, 94, 0.03) 0%, transparent 40%);
+        }
+        .font-sci-fi { font-family: 'Orbitron', sans-serif; }
+        .glass-panel {
+            background: rgba(11, 15, 25, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.05);
+        }
+        .tab-bar {
+            display: flex;
+            flex-wrap: wrap;
+            border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+        }
+        .tab-btn {
+            flex: 1;
+            min-width: 110px;
+            padding: 12px 8px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            font-size: 0.68rem;
+            color: #9ca3af;
+            transition: all 0.3s;
+            border-bottom: 2px solid transparent;
+        }
+        .tab-btn:hover { color: #67e8f9; }
+        .tab-btn.active {
+            color: #00F0FF;
+            border-bottom-color: #00F0FF;
+            text-shadow: 0 0 8px rgba(0, 240, 255, 0.6);
+        }
+        .code-box {
+            background: rgba(0,0,0,0.5);
+            border: 1px dashed rgba(0,240,255,0.25);
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-family: 'Orbitron', monospace;
+            font-size: 11px;
+            line-height: 1.55;
+            overflow-x: auto;
+        }
+        .step-log {
+            min-height: 72px;
+            background: rgba(0,0,0,0.35);
+            border: 1px solid rgba(0,240,255,0.15);
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 13px;
+            color: #cbd5e1;
+            line-height: 1.5;
+        }
+        .dp-cell {
+            min-width: 36px;
+            width: 36px;
+            height: 32px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', monospace;
+            font-size: 12px;
+            font-weight: bold;
+            transition: all 0.2s;
+            border: 1px solid rgba(0, 240, 255, 0.2);
+        }
+        table td.dp-cell,
+        table th.dp-cell {
+            display: table-cell;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .dp-cell.empty { background: rgba(0,0,0,0.5); color: #64748b; }
+        .dp-cell.filled { background: rgba(0, 240, 255, 0.12); color: #67e8f9; }
+        .dp-cell.current { background: rgba(34, 197, 94, 0.35); border-color: #22c55e; color: #22c55e; box-shadow: 0 0 12px rgba(34,197,94,0.5); }
+        .dp-cell.source { background: rgba(249, 115, 22, 0.2); border-color: rgba(249,115,22,0.5); color: #fb923c; }
+        button { transition: all 0.2s; }
+        button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 0 12px rgba(0,240,255,0.3); }
+        button:disabled { opacity: 0.45; cursor: not-allowed; }
+        input[type=range] { accent-color: #00F0FF; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-6 md:p-10 pt-20 md:pt-10">
+
+    <a href="../../index.html" class="fixed top-4 left-4 md:top-6 md:left-6 z-50 flex items-center gap-2 px-3 py-2 md:px-4 md:py-2 rounded border border-cyan-500/30 bg-black/60 backdrop-blur-md text-cyan-500/70 hover:text-cyan-300 hover:border-cyan-400 hover:shadow-[0_0_15px_rgba(0,240,255,0.4)] transition-all font-sci-fi text-xs md:text-sm group text-decoration-none">
+        <svg class="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        <span class="hidden md:inline tracking-wider">MAIN TERMINAL</span>
+    </a>
+
+    <div class="text-center mb-8 w-full max-w-5xl mt-6 md:mt-0">
+        <h1 class="text-3xl md:text-4xl font-sci-fi font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-500 mb-2 drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
+            动态规划
+        </h1>
+        <p class="text-cyan-400/70 text-sm tracking-widest font-sci-fi">STATE · TRANSITION · MEMOIZATION</p>
+    </div>
+
+    <div class="w-full max-w-5xl flex flex-col gap-6">
+        <!-- DP 问题特性 -->
+        <div class="glass-panel rounded-2xl p-6">
+            <h2 class="text-xl font-bold text-cyan-300 font-sci-fi mb-4">DP 问题特性</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-300">
+                <div class="border-l-4 border-cyan-500/70 pl-4">
+                    <h3 class="font-bold text-cyan-400 mb-1 font-sci-fi">最优子结构</h3>
+                    <p class="leading-relaxed">问题的最优解包含子问题的最优解。全局最优可由局部最优递推得到。</p>
+                </div>
+                <div class="border-l-4 border-amber-500/70 pl-4">
+                    <h3 class="font-bold text-amber-400 mb-1 font-sci-fi">重叠子问题</h3>
+                    <p class="leading-relaxed">递归时同一子问题被重复计算。用表格（或记忆化）保存结果，避免重复。</p>
+                </div>
+                <div class="border-l-4 border-emerald-500/70 pl-4">
+                    <h3 class="font-bold text-emerald-400 mb-1 font-sci-fi">无后效性</h3>
+                    <p class="leading-relaxed">未来决策只依赖当前状态，与如何到达当前状态无关。</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- DP 解题思路 -->
+        <div class="glass-panel rounded-2xl p-6">
+            <h2 class="text-xl font-bold text-cyan-300 font-sci-fi mb-4">DP 解题思路</h2>
+            <ol class="list-decimal list-inside space-y-3 text-sm text-gray-300">
+                <li><strong class="text-cyan-400">定义状态</strong>：用 dp[i] 或 dp[i][j] 表示子问题的解（如「前 i 个物品、容量 w 下的最大价值」）。</li>
+                <li><strong class="text-cyan-400">状态转移方程</strong>：写出 dp 当前状态如何由已求子状态推导。</li>
+                <li><strong class="text-cyan-400">边界条件</strong>：确定初始值（如 dp[0]=0、第一行/列）。</li>
+                <li><strong class="text-cyan-400">计算顺序</strong>：按依赖关系确定填表顺序（自底向上或按拓扑序）。</li>
+            </ol>
+        </div>
+
+        <div class="glass-panel rounded-2xl overflow-hidden">
+            <div class="tab-bar bg-black/20">
+                <button type="button" class="tab-btn active" data-tab="knap01">0-1 背包</button>
+                <button type="button" class="tab-btn" data-tab="knapUnb">完全背包</button>
+                <button type="button" class="tab-btn" data-tab="edit">编辑距离</button>
+            </div>
+
+            <!-- 0-1 背包 -->
+            <div id="panel-knap01" class="tab-panel p-6 md:p-8 flex flex-col gap-6">
+                <h2 class="text-xl font-bold text-cyan-300 font-sci-fi">0-1 背包</h2>
+                <p class="text-sm text-gray-400 leading-relaxed">
+                    n 件物品，每件有重量 w 和价值 v，背包容量 W。每件物品<strong>最多选一次</strong>。求最大价值。
+                </p>
+                <div class="code-box">
+                    <pre class="text-cyan-200/90">dp[i][w] = 前 i 件物品、容量 w 下的最大价值
+dp[i][w] = max(dp[i-1][w], dp[i-1][w-wt[i-1]]+val[i-1])  // 不选 or 选
+边界: dp[0][*]=0, dp[*][0]=0</pre>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1 font-sci-fi">重量（逗号）</label>
+                        <input id="k01Wt" type="text" value="2,3,4,5" class="w-full rounded bg-black/40 border border-cyan-500/20 px-3 py-2 text-white text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1 font-sci-fi">价值（逗号）</label>
+                        <input id="k01Val" type="text" value="3,4,5,6" class="w-full rounded bg-black/40 border border-cyan-500/20 px-3 py-2 text-white text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1 font-sci-fi">容量 W</label>
+                        <input id="k01Cap" type="number" value="8" class="w-full rounded bg-black/40 border border-cyan-500/20 px-3 py-2 text-white text-sm">
+                    </div>
+                    <div class="flex items-end">
+                        <button type="button" id="k01Reset" class="px-4 py-2 rounded bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 font-sci-fi text-sm">构建 DP 表</button>
+                    </div>
+                </div>
+                <div id="k01Items" class="text-xs text-gray-400 font-sci-fi"></div>
+                <div id="k01Table" class="overflow-x-auto rounded-lg border border-cyan-500/20 p-2"></div>
+                <div class="flex flex-wrap gap-2 items-center">
+                    <button type="button" id="k01Prev" class="px-4 py-2 rounded bg-slate-600/40 border border-slate-500/40 text-slate-200 font-sci-fi text-sm" disabled>上一步</button>
+                    <button type="button" id="k01Next" class="px-4 py-2 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 font-sci-fi text-sm" disabled>下一步</button>
+                    <button type="button" id="k01Auto" class="px-4 py-2 rounded bg-violet-500/20 border border-violet-400/40 text-violet-200 font-sci-fi text-sm" disabled>自动播放</button>
+                    <label class="flex items-center gap-2 text-xs text-gray-400 font-sci-fi ml-2"><span>速度</span><input id="k01Speed" type="range" min="150" max="800" value="400" class="w-20"></label>
+                </div>
+                <div id="k01Log" class="step-log font-sci-fi text-xs md:text-sm"></div>
+            </div>
+
+            <!-- 完全背包 -->
+            <div id="panel-knapUnb" class="tab-panel p-6 md:p-8 flex flex-col gap-6 hidden">
+                <h2 class="text-xl font-bold text-cyan-300 font-sci-fi">完全背包</h2>
+                <p class="text-sm text-gray-400 leading-relaxed">
+                    与 0-1 背包类似，但每件物品可<strong>无限次</strong>选取。一维 dp：按容量正序枚举，同一物品可多次加入。
+                </p>
+                <div class="code-box">
+                    <pre class="text-cyan-200/90">dp[w] = 容量 w 下的最大价值
+for i in 物品:
+    for w from wt[i] to W:
+        dp[w] = max(dp[w], dp[w-wt[i]] + val[i])</pre>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1 font-sci-fi">重量</label>
+                        <input id="kUnbWt" type="text" value="2,3,4" class="w-full rounded bg-black/40 border border-cyan-500/20 px-3 py-2 text-white text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1 font-sci-fi">价值</label>
+                        <input id="kUnbVal" type="text" value="3,4,5" class="w-full rounded bg-black/40 border border-cyan-500/20 px-3 py-2 text-white text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1 font-sci-fi">容量 W</label>
+                        <input id="kUnbCap" type="number" value="6" class="w-full rounded bg-black/40 border border-cyan-500/20 px-3 py-2 text-white text-sm">
+                    </div>
+                    <div class="flex items-end">
+                        <button type="button" id="kUnbReset" class="px-4 py-2 rounded bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 font-sci-fi text-sm">构建 DP</button>
+                    </div>
+                </div>
+                <div id="kUnbItems" class="text-xs text-gray-400 font-sci-fi"></div>
+                <div id="kUnbTable" class="overflow-x-auto rounded-lg border border-cyan-500/20 p-2"></div>
+                <div class="flex flex-wrap gap-2 items-center">
+                    <button type="button" id="kUnbPrev" class="px-4 py-2 rounded bg-slate-600/40 border border-slate-500/40 text-slate-200 font-sci-fi text-sm" disabled>上一步</button>
+                    <button type="button" id="kUnbNext" class="px-4 py-2 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 font-sci-fi text-sm" disabled>下一步</button>
+                    <button type="button" id="kUnbAuto" class="px-4 py-2 rounded bg-violet-500/20 border border-violet-400/40 text-violet-200 font-sci-fi text-sm" disabled>自动播放</button>
+                    <label class="flex items-center gap-2 text-xs text-gray-400 font-sci-fi ml-2"><span>速度</span><input id="kUnbSpeed" type="range" min="150" max="800" value="350" class="w-20"></label>
+                </div>
+                <div id="kUnbLog" class="step-log font-sci-fi text-xs md:text-sm"></div>
+            </div>
+
+            <!-- 编辑距离 -->
+            <div id="panel-edit" class="tab-panel p-6 md:p-8 flex flex-col gap-6 hidden">
+                <h2 class="text-xl font-bold text-cyan-300 font-sci-fi">编辑距离</h2>
+                <p class="text-sm text-gray-400 leading-relaxed">
+                    将字符串 A 变成 B 的<strong>最少</strong>编辑次数（插入、删除、替换各算 1 次）。dp[i][j] = A[0..i-1] 到 B[0..j-1] 的编辑距离。
+                </p>
+                <div class="code-box">
+                    <pre class="text-cyan-200/90">dp[i][j] = min(
+  dp[i-1][j-1] + (A[i-1]==B[j-1] ? 0 : 1),  // 替换
+  dp[i-1][j] + 1,   // 删 A[i-1]
+  dp[i][j-1] + 1    // 插 B[j-1]
+)
+边界: dp[i][0]=i, dp[0][j]=j</pre>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1 font-sci-fi">字符串 A</label>
+                        <input id="editA" type="text" value="kitten" class="w-full rounded bg-black/40 border border-cyan-500/20 px-3 py-2 text-white text-sm" maxlength="10">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1 font-sci-fi">字符串 B</label>
+                        <input id="editB" type="text" value="sitting" class="w-full rounded bg-black/40 border border-cyan-500/20 px-3 py-2 text-white text-sm" maxlength="10">
+                    </div>
+                    <div class="flex items-end">
+                        <button type="button" id="editReset" class="px-4 py-2 rounded bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 font-sci-fi text-sm">构建 DP 表</button>
+                    </div>
+                </div>
+                <div id="editTable" class="overflow-x-auto rounded-lg border border-cyan-500/20 p-2"></div>
+                <div class="flex flex-wrap gap-2 items-center">
+                    <button type="button" id="editPrev" class="px-4 py-2 rounded bg-slate-600/40 border border-slate-500/40 text-slate-200 font-sci-fi text-sm" disabled>上一步</button>
+                    <button type="button" id="editNext" class="px-4 py-2 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 font-sci-fi text-sm" disabled>下一步</button>
+                    <button type="button" id="editAuto" class="px-4 py-2 rounded bg-violet-500/20 border border-violet-400/40 text-violet-200 font-sci-fi text-sm" disabled>自动播放</button>
+                    <label class="flex items-center gap-2 text-xs text-gray-400 font-sci-fi ml-2"><span>速度</span><input id="editSpeed" type="range" min="150" max="800" value="400" class="w-20"></label>
+                </div>
+                <div id="editLog" class="step-log font-sci-fi text-xs md:text-sm"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        const tabs = document.querySelectorAll('.tab-btn');
+        const panels = { knap01: document.getElementById('panel-knap01'), knapUnb: document.getElementById('panel-knapUnb'), edit: document.getElementById('panel-edit') };
+        tabs.forEach(btn => btn.addEventListener('click', () => {
+            const id = btn.dataset.tab;
+            tabs.forEach(b => b.classList.toggle('active', b === btn));
+            Object.keys(panels).forEach(k => { panels[k].classList.toggle('hidden', k !== id); panels[k].classList.toggle('flex', k === id); });
+        }));
+
+        function parseArr(s, def) {
+            const a = (s || '').replace(/\s/g, '').split(',').map(x => parseInt(x.trim(), 10)).filter(n => !isNaN(n));
+            return a.length ? a : def;
+        }
+
+        /* ========== 0-1 背包 ========== */
+        const k01 = { wt: [], val: [], cap: 0, dp: [], steps: [], idx: -1, autoTimer: null };
+        function buildK01Steps() {
+            const n = k01.wt.length, W = k01.cap;
+            const dp = Array(n + 1).fill(null).map(() => Array(W + 1).fill(0));
+            const steps = [];
+            for (let i = 1; i <= n; i++) {
+                for (let w = 1; w <= W; w++) {
+                    const skip = dp[i - 1][w];
+                    const take = k01.wt[i - 1] <= w ? dp[i - 1][w - k01.wt[i - 1]] + k01.val[i - 1] : -1;
+                    const best = Math.max(skip, take >= 0 ? take : skip);
+                    dp[i][w] = best;
+                    steps.push({ i, w, skip, take, best, dp: dp.map(r => [...r]), src: take >= 0 && take > skip ? [i - 1, w - k01.wt[i - 1]] : null });
+                }
+            }
+            k01.dp = dp;
+            return steps;
+        }
+        function renderK01() {
+            const el = document.getElementById('k01Table');
+            const n = k01.wt.length, W = k01.cap;
+            if (!k01.dp.length) { el.innerHTML = ''; return; }
+            const step = k01.idx >= 0 && k01.idx < k01.steps.length ? k01.steps[k01.idx] : null;
+            const dp = step ? step.dp : k01.dp;
+            let html = '<table class="border-collapse text-center"><tr><th class="dp-cell empty border-0"></th>';
+            for (let w = 0; w <= W; w++) html += `<th class="dp-cell empty px-1">${w}</th>`;
+            html += '</tr>';
+            for (let i = 0; i <= n; i++) {
+                html += `<tr><th class="dp-cell empty">${i}</th>`;
+                for (let w = 0; w <= W; w++) {
+                    let cls = 'dp-cell ';
+                    const v = dp[i] ? dp[i][w] : '';
+                    const filled = step && step.i === i && step.w === w;
+                    const isSrc = step && step.src && step.src[0] === i && step.src[1] === w;
+                    if (filled) cls += 'current';
+                    else if (isSrc) cls += 'source';
+                    else if (v !== '' && v !== undefined) cls += 'filled';
+                    else cls += 'empty';
+                    const disp = (v === '' || v === undefined) ? '' : v;
+                    html += `<td class="${cls}">${disp}</td>`;
+                }
+                html += '</tr>';
+            }
+            html += '</table>';
+            el.innerHTML = html;
+        }
+        function setK01Log() {
+            const log = document.getElementById('k01Log');
+            if (k01.idx < 0 || !k01.steps.length) { log.textContent = '输入重量、价值、容量，点击「构建 DP 表」。'; return; }
+            const s = k01.steps[k01.idx];
+            const takeStr = s.take >= 0 ? `选物品${s.i}(w=${k01.wt[s.i-1]},v=${k01.val[s.i-1]})得${s.take}` : '不能选';
+            log.textContent = `步骤 ${k01.idx + 1}/${k01.steps.length}：dp[${s.i}][${s.w}] = max(不选=${s.skip}, ${takeStr}) = ${s.best}`;
+        }
+        function k01Ui() {
+            const has = k01.steps.length > 0;
+            document.getElementById('k01Prev').disabled = !has || k01.idx < 0;
+            document.getElementById('k01Next').disabled = !has || k01.idx >= k01.steps.length - 1;
+            document.getElementById('k01Auto').disabled = !has;
+        }
+        document.getElementById('k01Reset').addEventListener('click', () => {
+            if (k01.autoTimer) clearInterval(k01.autoTimer);
+            k01.autoTimer = null;
+            k01.wt = parseArr(document.getElementById('k01Wt').value, [2,3,4,5]);
+            k01.val = parseArr(document.getElementById('k01Val').value, [3,4,5,6]);
+            k01.cap = parseInt(document.getElementById('k01Cap').value, 10) || 8;
+            document.getElementById('k01Wt').value = k01.wt.join(', ');
+            document.getElementById('k01Val').value = k01.val.join(', ');
+            document.getElementById('k01Cap').value = k01.cap;
+            k01.steps = buildK01Steps();
+            k01.idx = Math.max(0, k01.steps.length - 1);
+            document.getElementById('k01Items').textContent = `物品: ${k01.wt.map((w,i)=>`#${i+1}(w=${w},v=${k01.val[i]})`).join(', ')}`;
+            renderK01(); setK01Log(); k01Ui();
+        });
+        document.getElementById('k01Prev').addEventListener('click', () => { if (k01.idx > 0) { k01.idx--; renderK01(); setK01Log(); k01Ui(); } });
+        document.getElementById('k01Next').addEventListener('click', () => { if (k01.idx < k01.steps.length - 1) { k01.idx++; renderK01(); setK01Log(); k01Ui(); } });
+        document.getElementById('k01Auto').addEventListener('click', function () {
+            if (k01.autoTimer) { clearInterval(k01.autoTimer); k01.autoTimer = null; this.textContent = '自动播放'; return; }
+            if (k01.idx >= k01.steps.length - 1) k01.idx = -1;
+            this.textContent = '停止';
+            const spd = parseInt(document.getElementById('k01Speed').value, 10);
+            k01.autoTimer = setInterval(() => {
+                if (k01.idx < k01.steps.length - 1) { k01.idx++; renderK01(); setK01Log(); k01Ui(); }
+                else { clearInterval(k01.autoTimer); k01.autoTimer = null; this.textContent = '自动播放'; }
+            }, 800 - spd);
+        });
+
+        /* ========== 完全背包 ========== */
+        const kUnb = { wt: [], val: [], cap: 0, dp: [], steps: [], idx: -1, autoTimer: null };
+        function buildKUnbSteps() {
+            const n = kUnb.wt.length, W = kUnb.cap;
+            const dp = Array(W + 1).fill(0);
+            const steps = [{ w: 0, dp: [...dp], msg: '初始化' }];
+            for (let i = 0; i < n; i++) {
+                for (let w = kUnb.wt[i]; w <= W; w++) {
+                    const old = dp[w];
+                    const add = dp[w - kUnb.wt[i]] + kUnb.val[i];
+                    dp[w] = Math.max(old, add);
+                    steps.push({ i, w, old, add, dp: [...dp], changed: dp[w] !== old });
+                }
+            }
+            kUnb.dp = dp;
+            return steps;
+        }
+        function renderKUnb() {
+            const el = document.getElementById('kUnbTable');
+            const W = kUnb.cap;
+            if (!kUnb.dp.length) { el.innerHTML = ''; return; }
+            const step = kUnb.idx >= 0 ? kUnb.steps[kUnb.idx] : null;
+            const dp = step ? step.dp : kUnb.dp;
+            let html = '<div class="flex flex-wrap gap-2"><span class="dp-cell empty">w</span>';
+            for (let w = 0; w <= W; w++) {
+                const changed = step && step.w === w && step.changed;
+                html += `<span class="dp-cell ${changed ? 'current' : 'filled'}">${w}</span>`;
+            }
+            html += '</div><div class="flex flex-wrap gap-2 mt-1"><span class="dp-cell empty">dp</span>';
+            for (let w = 0; w <= W; w++) {
+                const changed = step && step.w === w && step.changed;
+                html += `<span class="dp-cell ${changed ? 'current' : 'filled'}">${dp[w]}</span>`;
+            }
+            html += '</div>';
+            el.innerHTML = html;
+        }
+        function setKUnbLog() {
+            const log = document.getElementById('kUnbLog');
+            if (kUnb.idx < 0 || !kUnb.steps.length) { log.textContent = '输入重量、价值、容量，点击「构建 DP」。'; return; }
+            const s = kUnb.steps[kUnb.idx];
+            if (s.msg) { log.textContent = '初始化 dp[0..W]=0'; return; }
+            log.textContent = `步骤 ${kUnb.idx + 1}/${kUnb.steps.length}：dp[${s.w}]=max(${s.old}, dp[${s.w - kUnb.wt[s.i]}]+${kUnb.val[s.i]}=${s.add})=${s.dp[s.w]}${s.changed ? ' (更新)' : ''}`;
+        }
+        function kUnbUi() {
+            const has = kUnb.steps.length > 0;
+            document.getElementById('kUnbPrev').disabled = !has || kUnb.idx <= 0;
+            document.getElementById('kUnbNext').disabled = !has || kUnb.idx >= kUnb.steps.length - 1;
+            document.getElementById('kUnbAuto').disabled = !has;
+        }
+        document.getElementById('kUnbReset').addEventListener('click', () => {
+            if (kUnb.autoTimer) clearInterval(kUnb.autoTimer);
+            kUnb.autoTimer = null;
+            kUnb.wt = parseArr(document.getElementById('kUnbWt').value, [2,3,4]);
+            kUnb.val = parseArr(document.getElementById('kUnbVal').value, [3,4,5]);
+            kUnb.cap = parseInt(document.getElementById('kUnbCap').value, 10) || 6;
+            document.getElementById('kUnbWt').value = kUnb.wt.join(', ');
+            document.getElementById('kUnbVal').value = kUnb.val.join(', ');
+            document.getElementById('kUnbCap').value = kUnb.cap;
+            kUnb.steps = buildKUnbSteps();
+            kUnb.idx = 0;
+            document.getElementById('kUnbItems').textContent = `物品: ${kUnb.wt.map((w,i)=>`#${i+1}(w=${w},v=${kUnb.val[i]},无限)`).join(', ')}`;
+            renderKUnb(); setKUnbLog(); kUnbUi();
+        });
+        document.getElementById('kUnbPrev').addEventListener('click', () => { if (kUnb.idx > 0) { kUnb.idx--; renderKUnb(); setKUnbLog(); kUnbUi(); } });
+        document.getElementById('kUnbNext').addEventListener('click', () => { if (kUnb.idx < kUnb.steps.length - 1) { kUnb.idx++; renderKUnb(); setKUnbLog(); kUnbUi(); } });
+        document.getElementById('kUnbAuto').addEventListener('click', function () {
+            if (kUnb.autoTimer) { clearInterval(kUnb.autoTimer); kUnb.autoTimer = null; this.textContent = '自动播放'; return; }
+            if (kUnb.idx >= kUnb.steps.length - 1) kUnb.idx = -1;
+            this.textContent = '停止';
+            const spd = parseInt(document.getElementById('kUnbSpeed').value, 10);
+            kUnb.autoTimer = setInterval(() => {
+                if (kUnb.idx < kUnb.steps.length - 1) { kUnb.idx++; renderKUnb(); setKUnbLog(); kUnbUi(); }
+                else { clearInterval(kUnb.autoTimer); kUnb.autoTimer = null; this.textContent = '自动播放'; }
+            }, 750 - spd);
+        });
+
+        /* ========== 编辑距离 ========== */
+        const edit = { a: '', b: '', dp: [], steps: [], idx: -1, autoTimer: null };
+        function buildEditSteps() {
+            const A = edit.a, B = edit.b;
+            const n = A.length, m = B.length;
+            const dp = Array(n + 1).fill(null).map(() => Array(m + 1).fill(0));
+            for (let i = 0; i <= n; i++) dp[i][0] = i;
+            for (let j = 0; j <= m; j++) dp[0][j] = j;
+            const steps = [];
+            for (let i = 1; i <= n; i++) {
+                for (let j = 1; j <= m; j++) {
+                    const rep = dp[i - 1][j - 1] + (A[i - 1] === B[j - 1] ? 0 : 1);
+                    const del = dp[i - 1][j] + 1;
+                    const ins = dp[i][j - 1] + 1;
+                    dp[i][j] = Math.min(rep, del, ins);
+                    steps.push({ i, j, rep, del, ins, dp: dp.map(r => [...r]) });
+                }
+            }
+            edit.dp = dp;
+            return steps;
+        }
+        function renderEdit() {
+            const el = document.getElementById('editTable');
+            const A = edit.a, B = edit.b;
+            const n = A.length, m = B.length;
+            if (!edit.dp.length) { el.innerHTML = ''; return; }
+            const step = edit.idx >= 0 && edit.idx < edit.steps.length ? edit.steps[edit.idx] : null;
+            const dp = step ? step.dp : edit.dp;
+            let html = '<table class="border-collapse text-center"><tr><th class="dp-cell empty border-0"></th><th class="dp-cell empty">∅</th>';
+            for (let j = 0; j < m; j++) html += `<th class="dp-cell empty">${B[j]}</th>`;
+            html += '</tr><tr><th class="dp-cell empty">∅</th>';
+            for (let j = 0; j <= m; j++) html += `<td class="dp-cell filled">${dp[0][j]}</td>`;
+            html += '</tr>';
+            for (let i = 1; i <= n; i++) {
+                html += `<tr><th class="dp-cell empty">${A[i-1]}</th>`;
+                for (let j = 0; j <= m; j++) {
+                    let cls = 'dp-cell ';
+                    const cur = step && step.i === i && step.j === j;
+                    if (cur) cls += 'current';
+                    else if (dp[i][j] !== undefined) cls += 'filled';
+                    else cls += 'empty';
+                    html += `<td class="${cls}">${dp[i][j]}</td>`;
+                }
+                html += '</tr>';
+            }
+            html += '</table>';
+            el.innerHTML = html;
+        }
+        function setEditLog() {
+            const log = document.getElementById('editLog');
+            if (edit.idx < 0 || !edit.steps.length) { log.textContent = '输入字符串 A、B，点击「构建 DP 表」。'; return; }
+            const s = edit.steps[edit.idx];
+            const repTxt = edit.a[s.i-1] === edit.b[s.j-1] ? '相同' : '替换';
+            log.textContent = `步骤 ${edit.idx + 1}/${edit.steps.length}：dp[${s.i}][${s.j}]=min(替换${repTxt}=${s.rep}, 删=${s.del}, 插=${s.ins})=${s.dp[s.i][s.j]}`;
+        }
+        function editUi() {
+            const has = edit.steps.length > 0;
+            document.getElementById('editPrev').disabled = !has || edit.idx < 0;
+            document.getElementById('editNext').disabled = !has || edit.idx >= edit.steps.length - 1;
+            document.getElementById('editAuto').disabled = !has;
+        }
+        document.getElementById('editReset').addEventListener('click', () => {
+            if (edit.autoTimer) clearInterval(edit.autoTimer);
+            edit.autoTimer = null;
+            edit.a = document.getElementById('editA').value || 'kitten';
+            edit.b = document.getElementById('editB').value || 'sitting';
+            document.getElementById('editA').value = edit.a;
+            document.getElementById('editB').value = edit.b;
+            edit.steps = buildEditSteps();
+            edit.idx = 0;
+            renderEdit(); setEditLog(); editUi();
+        });
+        document.getElementById('editPrev').addEventListener('click', () => { if (edit.idx > 0) { edit.idx--; renderEdit(); setEditLog(); editUi(); } });
+        document.getElementById('editNext').addEventListener('click', () => { if (edit.idx < edit.steps.length - 1) { edit.idx++; renderEdit(); setEditLog(); editUi(); } });
+        document.getElementById('editAuto').addEventListener('click', function () {
+            if (edit.autoTimer) { clearInterval(edit.autoTimer); edit.autoTimer = null; this.textContent = '自动播放'; return; }
+            if (edit.idx >= edit.steps.length - 1) edit.idx = -1;
+            this.textContent = '停止';
+            const spd = parseInt(document.getElementById('editSpeed').value, 10);
+            edit.autoTimer = setInterval(() => {
+                if (edit.idx < edit.steps.length - 1) { edit.idx++; renderEdit(); setEditLog(); editUi(); }
+                else { clearInterval(edit.autoTimer); edit.autoTimer = null; this.textContent = '自动播放'; }
+            }, 800 - spd);
+        });
+
+        document.getElementById('k01Reset').click();
+        document.getElementById('kUnbReset').click();
+        document.getElementById('editReset').click();
+    })();
+    </script>
+</body>
+</html>

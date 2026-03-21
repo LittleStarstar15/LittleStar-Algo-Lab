@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星华大学：贪心算法</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Noto+Sans+SC:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #050814; font-family: 'Noto Sans SC', sans-serif; color: #e2e8f0; overflow-x: hidden;
+            background-image: radial-gradient(circle at 20% 40%, rgba(0, 240, 255, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 80% 60%, rgba(255, 215, 0, 0.03) 0%, transparent 40%); }
+        .font-sci-fi { font-family: 'Orbitron', sans-serif; }
+        .glass-panel { background: rgba(11, 15, 25, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(0, 240, 255, 0.2); box-shadow: 0 0 30px rgba(0, 240, 255, 0.05); }
+        .tab-bar { display: flex; overflow-x: auto; border-bottom: 1px solid rgba(0, 240, 255, 0.2); }
+        .tab-bar::-webkit-scrollbar { height: 6px; }
+        .tab-btn { flex-shrink: 0; padding: 12px 14px; font-family: 'Orbitron', sans-serif; font-weight: bold; font-size: 0.7rem; color: #9ca3af; border-bottom: 2px solid transparent; transition: all 0.3s; }
+        .tab-btn:hover { color: #67e8f9; }
+        .tab-btn.active { color: #00F0FF; border-bottom-color: #00F0FF; text-shadow: 0 0 8px rgba(0, 240, 255, 0.6); }
+        .code-box { background: rgba(0,0,0,0.5); border: 1px dashed rgba(0,240,255,0.25); border-radius: 10px; padding: 12px; font-family: 'Orbitron', monospace; font-size: 11px; overflow-x: auto; }
+        button { transition: all 0.2s; }
+        button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 0 12px rgba(0,240,255,0.3); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        input[type=range] { accent-color: #00F0FF; }
+        .item-card { transition: all 0.2s; }
+        .item-card.selected { border-color: #10b981; box-shadow: 0 0 12px rgba(16,185,129,0.4); }
+        .item-card.partial { border-color: #eab308; background: rgba(234,179,8,0.1); }
+        .water-bar { min-width: 24px; transition: height 0.2s; }
+        .water-bar.left-ptr { border: 2px solid #10b981; box-shadow: 0 0 10px #10b981; }
+        .water-bar.right-ptr { border: 2px solid #f59e0b; box-shadow: 0 0 10px #f59e0b; }
+        .rope-seg { transition: all 0.3s; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-6 md:p-10 pt-20 md:pt-10">
+
+    <a href="../../index.html" class="fixed top-4 left-4 md:top-6 md:left-6 z-50 flex items-center gap-2 px-3 py-2 rounded border border-cyan-500/30 bg-black/60 backdrop-blur-md text-cyan-500/70 hover:text-cyan-300 hover:border-cyan-400 transition-all font-sci-fi text-xs text-decoration-none">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        <span class="hidden md:inline">MAIN TERMINAL</span>
+    </a>
+
+    <div class="text-center mb-6 w-full max-w-5xl mt-6">
+        <h1 class="text-3xl md:text-4xl font-sci-fi font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-amber-500 mb-2">
+            贪心算法
+        </h1>
+        <p class="text-cyan-400/70 text-sm tracking-widest font-sci-fi">FRACTIONAL KNAPSACK · MAX CONTAINER · MAX PRODUCT</p>
+    </div>
+
+    <!-- 贪心算法总览 -->
+    <div class="w-full max-w-5xl glass-panel rounded-2xl p-6 mb-6">
+        <h2 class="text-lg font-bold text-cyan-300 font-sci-fi mb-3">什么是贪心算法？</h2>
+        <p class="text-gray-300 text-sm leading-relaxed mb-2">
+            <strong class="text-cyan-400">贪心算法</strong>（Greedy Algorithm）是一种在每一步都做出<strong>当前看起来最优</strong>的选择的算法策略。它不会回溯，也不会瞻前顾后，而是坚信「局部最优」能逐步导向「全局最优」。
+        </p>
+        <p class="text-gray-300 text-sm leading-relaxed mb-2">
+            贪心适用的前提是问题具有<strong class="text-amber-400">贪心选择性质</strong>：即每一步的局部最优解，最终能组成全局最优解。并非所有问题都满足这一性质（例如 0-1 背包问题贪心就不能得到最优解），但当满足时，贪心往往能得到简洁高效的解法。
+        </p>
+        <p class="text-gray-400 text-xs">
+            下面通过三个经典问题来理解贪心的思想与应用。
+        </p>
+    </div>
+
+    <div class="w-full max-w-5xl glass-panel rounded-2xl overflow-hidden">
+        <div class="tab-bar bg-black/20">
+            <button class="tab-btn active" data-tab="knapsack">分数背包</button>
+            <button class="tab-btn" data-tab="container">最大容量</button>
+            <button class="tab-btn" data-tab="product">最大切分乘积</button>
+        </div>
+
+        <!-- 分数背包 -->
+        <div id="panel-knapsack" class="tab-panel p-6 flex flex-col gap-6">
+            <h2 class="text-xl font-bold text-cyan-300 font-sci-fi">分数背包 (Fractional Knapsack)</h2>
+            <div class="rounded-lg border border-cyan-500/20 bg-black/30 p-4 mb-2">
+                <h3 class="text-amber-400 font-sci-fi text-sm mb-2">▸ 要解决什么问题？</h3>
+                <p class="text-gray-300 text-sm leading-relaxed">
+                    你有一个容量为 W 的背包，和若干物品，每个物品有重量 w 和价值 v。与 0-1 背包不同，这里的<strong>物品可以分割</strong>（例如大米、液体），你可以只取某个物品的一部分。目标是：在不超过背包容量的前提下，<strong>使装入背包的总价值最大</strong>。
+                </p>
+            </div>
+            <p class="text-gray-300 text-sm">贪心策略：按<strong class="text-cyan-400">单位价值 v/w</strong> 从高到低选取，优先拿“性价比”最高的；空间不足时取分数。</p>
+            <div class="code-box"><pre class="text-cyan-200/90">按 v/w 降序排序 → 依次装入背包，空间不足时取分数</pre></div>
+            <div class="border-t border-cyan-500/20 pt-4">
+                <h3 class="font-sci-fi text-cyan-200 mb-3">参数 · 可视化</h3>
+                <div class="flex flex-wrap gap-4 mb-4">
+                    <div><label class="block text-xs text-gray-400 mb-1">背包容量 W</label><input id="kapW" type="number" min="5" max="100" value="50" class="w-20 rounded bg-black/40 border border-cyan-500/20 px-2 py-1 text-white"></div>
+                    <button id="kapGen" class="self-end px-4 py-2 rounded bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 font-sci-fi text-sm">随机物品</button>
+                    <button id="kapStep" class="self-end px-4 py-2 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 font-sci-fi text-sm" disabled>单步</button>
+                    <button id="kapAuto" class="self-end px-4 py-2 rounded bg-yellow-500/20 border border-yellow-400/40 text-yellow-200 font-sci-fi text-sm" disabled>自动</button>
+                </div>
+                <div class="flex gap-2 mb-2">
+                    <div class="flex-1 h-6 rounded bg-black/50 border border-cyan-500/30 overflow-hidden">
+                        <div id="kapUsedBar" class="h-full bg-cyan-500/50 transition-all" style="width:0%"></div>
+                    </div>
+                    <span id="kapUsedLbl" class="text-xs text-cyan-400 font-sci-fi">0 / 50</span>
+                </div>
+                <div id="kapItems" class="flex flex-wrap gap-3"></div>
+                <div id="kapLog" class="mt-3 text-xs text-gray-400 font-sci-fi min-h-[24px]"></div>
+            </div>
+        </div>
+
+        <!-- 最大容量（盛水） -->
+        <div id="panel-container" class="tab-panel hidden p-6 flex flex-col gap-6">
+            <h2 class="text-xl font-bold text-cyan-300 font-sci-fi">最大容量 (Container With Most Water)</h2>
+            <div class="rounded-lg border border-cyan-500/20 bg-black/30 p-4 mb-2">
+                <h3 class="text-amber-400 font-sci-fi text-sm mb-2">▸ 要解决什么问题？</h3>
+                <p class="text-gray-300 text-sm leading-relaxed">
+                    有 n 条竖线排成一行，第 i 条高度为 h[i]。若选择第 i 条和第 j 条（i &lt; j）作为容器的左右壁，可以形成一个盛水的矩形区域：宽度为 (j−i)，高度由较短的那条决定（水会从短板溢出），因此容量 = min(h[i], h[j]) × (j−i)。目标是：<strong>选出两条线，使形成的容器盛水量最大</strong>。
+                </p>
+            </div>
+            <p class="text-gray-300 text-sm">贪心/双指针策略：左右指针从两端向中间移动，每次移动<strong class="text-cyan-400">较短</strong>的一侧（因为移动较长的一侧不可能让容量变大）。</p>
+            <div class="code-box"><pre class="text-cyan-200/90">left=0, right=n-1
+while left < right:
+    area = min(h[left],h[right]) * (right-left)
+    记录最大 area
+    若 h[left] < h[right]: left++  else: right--</pre></div>
+            <div class="border-t border-cyan-500/20 pt-4">
+                <div class="flex flex-wrap gap-4 mb-4">
+                    <div><label class="block text-xs text-gray-400 mb-1">线条数量</label><input id="conN" type="number" min="4" max="16" value="8" class="w-16 rounded bg-black/40 border border-cyan-500/20 px-2 py-1 text-white"></div>
+                    <button id="conGen" class="self-end px-4 py-2 rounded bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 font-sci-fi text-sm">随机高度</button>
+                    <button id="conStep" class="self-end px-4 py-2 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 font-sci-fi text-sm" disabled>单步</button>
+                    <button id="conAuto" class="self-end px-4 py-2 rounded bg-yellow-500/20 border border-yellow-400/40 text-yellow-200 font-sci-fi text-sm" disabled>自动</button>
+                </div>
+                <div id="conViz" class="flex items-end justify-center gap-1 min-h-[180px] px-4"></div>
+                <div id="conLog" class="mt-3 text-xs text-gray-400 font-sci-fi"></div>
+            </div>
+        </div>
+
+        <!-- 最大切分乘积 -->
+        <div id="panel-product" class="tab-panel hidden p-6 flex flex-col gap-6">
+            <h2 class="text-xl font-bold text-cyan-300 font-sci-fi">最大切分乘积</h2>
+            <div class="rounded-lg border border-cyan-500/20 bg-black/30 p-4 mb-2">
+                <h3 class="text-amber-400 font-sci-fi text-sm mb-2">▸ 要解决什么问题？</h3>
+                <p class="text-gray-300 text-sm leading-relaxed">
+                    给定一个正整数 n，你需要把它拆成<strong>至少 2 个</strong>正整数之和（例如 n=10 可拆成 3+3+2+2），目标是：<strong>使这些数的乘积最大</strong>。例如 10 = 3+3+2+2，乘积 3×3×2×2 = 36，是所有拆法中乘积最大的。
+                </p>
+            </div>
+            <p class="text-gray-300 text-sm">贪心策略：尽量多用 3（数学上可证 3 是最优「单位」）；若余数为 1，则把一个 3 拆成 2+2；若余数为 2，则保留一个 2。</p>
+            <div class="code-box"><pre class="text-cyan-200/90">n<=3: 不切或特殊处理
+n>=4: 尽量切成 3，余数 1→用 2+2 代替 3+1，余数 2→保留 2</pre></div>
+            <div class="border-t border-cyan-500/20 pt-4">
+                <div class="flex flex-wrap gap-4 mb-4 items-end">
+                    <div><label class="block text-xs text-gray-400 mb-1">n</label><input id="prodN" type="number" min="2" max="30" value="10" class="w-20 rounded bg-black/40 border border-cyan-500/20 px-2 py-1 text-white"></div>
+                    <button id="prodRun" class="px-4 py-2 rounded bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 font-sci-fi text-sm">计算</button>
+                </div>
+                <div id="prodViz" class="flex flex-wrap gap-4 items-center justify-center py-6"></div>
+                <div id="prodLog" class="text-sm text-gray-400 font-sci-fi"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== 分数背包 ==========
+        let kapItems = [];
+        let kapSteps = [];
+        let kapStepIdx = 0;
+        let kapRunning = false;
+
+        function kapGenerate() {
+            const W = parseInt(document.getElementById('kapW').value) || 50;
+            document.getElementById('kapW').value = W;
+            kapItems = [];
+            const n = 4 + Math.floor(Math.random() * 5);
+            for (let i = 0; i < n; i++) {
+                const w = 5 + Math.floor(Math.random() * 30);
+                const v = 10 + Math.floor(Math.random() * 80);
+                kapItems.push({ w, v, ratio: v / w, idx: i });
+            }
+            kapItems.sort((a, b) => b.ratio - a.ratio);
+            kapSteps = [];
+            let cap = W, val = 0;
+            kapSteps.push({ cap, val, taken: [], msg: '初始：按 v/w 排序后' });
+            for (const it of kapItems) {
+                if (cap <= 0) break;
+                const take = Math.min(cap, it.w);
+                const frac = take / it.w;
+                const addVal = it.v * frac;
+                cap -= take;
+                val += addVal;
+                kapSteps.push({
+                    cap, val, taken: [...(kapSteps[kapSteps.length - 1]?.taken || []), { ...it, take, frac, addVal }],
+                    current: it, msg: `选取 物品(w=${it.w},v=${it.v}) ${frac < 1 ? '分数 ' + (frac * 100).toFixed(0) + '%' : '全部'}`
+                });
+            }
+            kapSteps.push({ cap: 0, val, taken: kapSteps[kapSteps.length - 1]?.taken || [], msg: `完成，总价值 ${val.toFixed(1)}` });
+            kapStepIdx = 0;
+            document.getElementById('kapStep').disabled = false;
+            document.getElementById('kapAuto').disabled = false;
+            kapRender();
+        }
+
+        function kapRender() {
+            const s = kapSteps[kapStepIdx];
+            if (!s) return;
+            const W = parseInt(document.getElementById('kapW').value) || 50;
+            const used = W - s.cap;
+            document.getElementById('kapUsedBar').style.width = (used / W * 100) + '%';
+            document.getElementById('kapUsedLbl').textContent = `${used.toFixed(1)} / ${W}`;
+            const wrap = document.getElementById('kapItems');
+            wrap.innerHTML = '';
+            kapItems.forEach((it, i) => {
+                const taken = s.taken.find(t => t.idx === it.idx);
+                const card = document.createElement('div');
+                card.className = 'item-card rounded-lg border px-3 py-2 text-sm ' + (taken ? (taken.frac < 1 ? 'partial border-yellow-500/50' : 'selected border-emerald-500/50') : 'border-cyan-500/30');
+                card.innerHTML = `<div class="font-bold text-cyan-200">物品${i+1}</div><div>w=${it.w} v=${it.v}</div><div class="text-amber-400 text-xs">v/w=${it.ratio.toFixed(2)}</div>` + (taken ? `<div class="text-emerald-400 text-xs mt-1">+${taken.addVal.toFixed(1)}</div>` : '');
+                wrap.appendChild(card);
+            });
+            document.getElementById('kapLog').textContent = `${s.msg} · 当前价值 ${s.val.toFixed(1)} · 步骤 ${kapStepIdx + 1}/${kapSteps.length}`;
+        }
+
+        // ========== 最大容量 ==========
+        let conHeights = [];
+        let conSteps = [];
+        let conStepIdx = 0;
+        let conRunning = false;
+
+        function conGenerate() {
+            const n = Math.max(4, Math.min(16, parseInt(document.getElementById('conN').value) || 8));
+            document.getElementById('conN').value = n;
+            conHeights = [];
+            for (let i = 0; i < n; i++) conHeights.push(20 + Math.floor(Math.random() * 120));
+            conSteps = [];
+            let left = 0, right = n - 1;
+            let best = 0, bestL = 0, bestR = 0;
+            while (left < right) {
+                const area = Math.min(conHeights[left], conHeights[right]) * (right - left);
+                conSteps.push({ left, right, area, best: Math.max(best, area), msg: `left=${left} right=${right} area=${area}` });
+                if (area > best) { best = area; bestL = left; bestR = right; }
+                if (conHeights[left] < conHeights[right]) left++; else right--;
+            }
+            conSteps.push({ left: -1, right: -1, area: best, best, msg: `最大容量 = ${best}` });
+            conStepIdx = 0;
+            document.getElementById('conStep').disabled = false;
+            document.getElementById('conAuto').disabled = false;
+            conRender();
+        }
+
+        function conRender() {
+            const s = conSteps[conStepIdx];
+            if (!s) return;
+            const viz = document.getElementById('conViz');
+            viz.innerHTML = '';
+            const maxH = Math.max(...conHeights, 1);
+            conHeights.forEach((h, i) => {
+                const bar = document.createElement('div');
+                bar.className = 'water-bar rounded-t ' + (i === s.left ? 'left-ptr bg-emerald-500/60' : i === s.right ? 'right-ptr bg-amber-500/60' : 'bg-cyan-500/30');
+                bar.style.height = (h / maxH * 120) + 'px';
+                bar.title = `h[${i}]=${h}`;
+                const label = document.createElement('div');
+                label.className = 'text-[10px] text-gray-500 mt-1';
+                label.textContent = h;
+                const col = document.createElement('div');
+                col.className = 'flex flex-col items-center';
+                col.appendChild(bar);
+                col.appendChild(label);
+                viz.appendChild(col);
+            });
+            document.getElementById('conLog').textContent = s.msg + (s.best ? ` · 当前最大 ${s.best}` : '');
+        }
+
+        // ========== 最大切分乘积 ==========
+        function prodGreedy(n) {
+            if (n <= 3) return { parts: [n], product: n <= 1 ? 0 : (n === 2 ? 1 : 2), msg: 'n<=3 特殊处理' };
+            const parts = [];
+            let rest = n;
+            while (rest > 4) { parts.push(3); rest -= 3; }
+            if (rest === 4) { parts.push(2); parts.push(2); }
+            else if (rest === 3) parts.push(3);
+            else if (rest === 2) parts.push(2);
+            else { parts[parts.length - 1] = 2; parts.push(2); }
+            const product = parts.reduce((a, b) => a * b, 1);
+            return { parts, product, msg: parts.join(' × ') + ' = ' + product };
+        }
+
+        function prodRun() {
+            const n = Math.max(2, Math.min(30, parseInt(document.getElementById('prodN').value) || 10));
+            document.getElementById('prodN').value = n;
+            const r = prodGreedy(n);
+            const viz = document.getElementById('prodViz');
+            viz.innerHTML = '';
+            const total = r.parts.reduce((a, b) => a + b, 0);
+            r.parts.forEach((p, i) => {
+                const seg = document.createElement('div');
+                seg.className = 'rope-seg rounded-lg border-2 border-cyan-500/50 bg-cyan-500/20 px-4 py-3 font-sci-fi font-bold text-cyan-200';
+                seg.textContent = p;
+                seg.title = `段 ${i + 1}`;
+                viz.appendChild(seg);
+                if (i < r.parts.length - 1) {
+                    const mul = document.createElement('span');
+                    mul.className = 'text-gray-500 text-xl';
+                    mul.textContent = '×';
+                    viz.appendChild(mul);
+                }
+            });
+            const eq = document.createElement('span');
+            eq.className = 'text-gray-500 mx-2';
+            eq.textContent = '=';
+            viz.appendChild(eq);
+            const res = document.createElement('span');
+            res.className = 'text-emerald-400 font-sci-fi font-bold text-xl';
+            res.textContent = r.product;
+            viz.appendChild(res);
+            document.getElementById('prodLog').textContent = `n=${n} → ${r.msg}`;
+        }
+
+        // ========== Tab & Events ==========
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+                btn.classList.add('active');
+                document.getElementById('panel-' + btn.dataset.tab).classList.remove('hidden');
+            });
+        });
+
+        document.getElementById('kapGen').addEventListener('click', kapGenerate);
+        document.getElementById('kapStep').addEventListener('click', () => {
+            if (kapStepIdx >= kapSteps.length - 1) { document.getElementById('kapStep').disabled = true; document.getElementById('kapAuto').disabled = true; kapRunning = false; return; }
+            kapStepIdx++;
+            kapRender();
+        });
+        document.getElementById('kapAuto').addEventListener('click', async () => {
+            kapRunning = true;
+            while (kapRunning && kapStepIdx < kapSteps.length - 1) {
+                kapStepIdx++;
+                kapRender();
+                await new Promise(r => setTimeout(r, 500));
+            }
+            kapRunning = false;
+        });
+        document.getElementById('kapW').addEventListener('change', () => { if (kapItems.length) kapGenerate(); });
+
+        document.getElementById('conGen').addEventListener('click', conGenerate);
+        document.getElementById('conStep').addEventListener('click', () => {
+            if (conStepIdx >= conSteps.length - 1) { document.getElementById('conStep').disabled = true; document.getElementById('conAuto').disabled = true; conRunning = false; return; }
+            conStepIdx++;
+            conRender();
+        });
+        document.getElementById('conAuto').addEventListener('click', async () => {
+            conRunning = true;
+            while (conRunning && conStepIdx < conSteps.length - 1) {
+                conStepIdx++;
+                conRender();
+                await new Promise(r => setTimeout(r, 400));
+            }
+            conRunning = false;
+        });
+        document.getElementById('conN').addEventListener('change', () => { if (conHeights.length) conGenerate(); });
+
+        document.getElementById('prodRun').addEventListener('click', prodRun);
+        document.getElementById('prodN').addEventListener('change', prodRun);
+
+        kapGenerate();
+        conGenerate();
+        prodRun();
+    </script>
+</body>
+</html>
